@@ -235,6 +235,23 @@ export function SessionScreen({
   )
 }
 
+const doneLines = [
+  'Rack the bell. That was the work.',
+  'Set it down. Session’s done.',
+  'Done. Walk it off.',
+  'The hard part’s over.',
+  'Breathe. Then go on with your day.',
+  'That’s the work for today.',
+  'Park the bell. Let your heart come down.',
+  'Leave the work on the mat.',
+  'Unclench. You’re done.',
+  'Bell down. Work done.',
+  'That’s it. Recover.',
+  'Good. Now cool down.',
+  'Work’s done. Let it settle.',
+  'Set the bell down. You’re finished.',
+]
+
 export function DoneScreen({
   sessionName,
   programTitle,
@@ -244,11 +261,15 @@ export function DoneScreen({
   programTitle: string
   onHome: () => void
 }) {
+  const [line] = useState(
+    () => doneLines[Math.floor(Math.random() * doneLines.length)],
+  )
+
   return (
     <main className="done">
       <p className="phase">Session complete</p>
       <h1>{sessionName}</h1>
-      <p className="lede">Rack the bell. That was the work.</p>
+      <p className="lede">{line}</p>
       <button className="primary" type="button" onClick={onHome}>
         Back to {programTitle}
       </button>

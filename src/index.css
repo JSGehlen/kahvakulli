@@ -588,6 +588,16 @@ h2 {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  text-align: center;
+}
+
+.done h1 {
+  width: 100%;
+}
+
+.done .lede {
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .done .primary {
