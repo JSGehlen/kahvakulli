@@ -36,14 +36,17 @@ Repeat 3×
 1. Goblet Squats
     * Work: 30 seconds
     * Rest: 45 seconds
+    * Reps: 10
     * Suggested bell: 16 kg
 2. Clean & Press (2 hands)
     * Work: 30 seconds
     * Rest: 45 seconds
+    * Reps: 6
     * Suggested bell: 12 kg
 3. Kettlebell Row
     * Work: 30 seconds
     * Rest: 45 seconds
+    * Reps: 10
     * Suggested bell: 16 kg
 
 ---
@@ -55,13 +58,16 @@ Repeat 4×
 1. Kettlebell Deadlift
     * Work: 20 seconds
     * Rest: 40 seconds
+    * Reps: 8
     * Suggested bell: 16 kg
 2. Push Ups (kneeling)
     * Work: 20 seconds
     * Rest: 40 seconds
+    * Reps: 8
 3. Kettlebell Thrusters
     * Work: 20 seconds
     * Rest: 40 seconds
+    * Reps: 6
     * Suggested bell: 12 kg
 
 ---
@@ -73,13 +79,16 @@ Repeat 3×
 1. Kettlebell Row
     * Work: 30 seconds
     * Rest: 30 seconds
+    * Reps: 10
     * Suggested bell: 16 kg
 2. Push Ups (kneeling)
     * Work: 30 seconds
     * Rest: 30 seconds
+    * Reps: 10
 3. Suitcase Hold
     * Work: 30 seconds
     * Rest: 30 seconds
+    * Target: 15s each side
     * Suggested bell: 16 kg
 
 ---

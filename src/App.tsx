@@ -5,17 +5,19 @@ import {
   clearSavedWorkout,
   loadLastProgramId,
   loadSavedWorkout,
+  loadSessionMode,
   loadWeekProgress,
   markSessionDone,
   replayElapsed,
   saveLastProgramId,
+  saveSessionMode,
   saveWorkout,
   type RestoredTimer,
 } from './persist.ts'
 import { HomeScreen, ProgramScreen } from './screens/HomeScreen.tsx'
 import { DoneScreen, SessionScreen } from './screens/SessionScreen.tsx'
 import { buildTimeline } from './timeline.ts'
-import type { Program, Session } from './types.ts'
+import type { Program, Session, SessionMode } from './types.ts'
 
 type Route =
   | { name: 'home' }
@@ -26,24 +28,32 @@ type Route =
 type Boot = {
   route: Route
   includeWarmup: boolean
+  mode: SessionMode
   resume?: RestoredTimer & { programId: string; sessionId: string }
 }
 
 function bootstrap(programs: Program[]): Boot {
   const saved = loadSavedWorkout()
-  if (!saved) return { route: { name: 'home' }, includeWarmup: true }
+  if (!saved) {
+    return { route: { name: 'home' }, includeWarmup: true, mode: loadSessionMode() }
+  }
 
   const program = programs.find((item) => item.id === saved.programId)
   const session = program?.sessions.find((item) => item.id === saved.sessionId)
   if (!program || !session) {
     clearSavedWorkout()
-    return { route: { name: 'home' }, includeWarmup: true }
+    return { route: { name: 'home' }, includeWarmup: true, mode: loadSessionMode() }
   }
 
-  const segments = buildTimeline(program, session, saved.includeWarmup)
+  const mode = saved.mode === 'emom' ? 'emom' : 'regular'
+  const segments = buildTimeline(program, session, saved.includeWarmup, mode)
   if (segments.length === 0) {
     clearSavedWorkout()
-    return { route: { name: 'program', id: program.id }, includeWarmup: saved.includeWarmup }
+    return {
+      route: { name: 'program', id: program.id },
+      includeWarmup: saved.includeWarmup,
+      mode,
+    }
   }
 
   const timer = replayElapsed(saved, segments)
@@ -52,12 +62,14 @@ function bootstrap(programs: Program[]): Boot {
     return {
       route: { name: 'done', id: program.id, sessionId: session.id },
       includeWarmup: saved.includeWarmup,
+      mode,
     }
   }
 
   return {
     route: { name: 'session', id: program.id, sessionId: session.id },
     includeWarmup: saved.includeWarmup,
+    mode,
     resume: { ...timer, programId: program.id, sessionId: session.id },
   }
 }
@@ -67,6 +79,7 @@ export default function App() {
   const [boot] = useState(() => bootstrap(programs))
   const [route, setRoute] = useState<Route>(boot.route)
   const [includeWarmup, setIncludeWarmup] = useState(boot.includeWarmup)
+  const [mode, setMode] = useState<SessionMode>(boot.mode)
   const [resume, setResume] = useState(boot.resume)
 
   const [lastProgramId, setLastProgramId] = useState(() => loadLastProgramId())
@@ -112,6 +125,7 @@ export default function App() {
       programs={programs}
       currentProgram={currentProgram}
       doneSessionIds={weekProgress.byProgram[currentProgram?.id ?? ''] ?? []}
+      mode={mode}
       onOpen={(id) => {
         rememberProgram(id)
         setRoute({ name: 'program', id })
@@ -140,8 +154,13 @@ export default function App() {
         program={program}
         previous={programs[programs.findIndex((item) => item.id === program.id) - 1]}
         includeWarmup={includeWarmup}
+        mode={mode}
         doneSessionIds={weekProgress.byProgram[program.id] ?? []}
         onToggleWarmup={() => setIncludeWarmup((value) => !value)}
+        onModeChange={(next) => {
+          saveSessionMode(next)
+          setMode(next)
+        }}
         onBack={() => setRoute({ name: 'home' })}
         onStart={startSession}
       />
@@ -149,16 +168,17 @@ export default function App() {
   }
 
   if (route.name === 'session' && session) {
-    const segments = buildTimeline(program, session, includeWarmup)
+    const segments = buildTimeline(program, session, includeWarmup, mode)
     const restored =
       resume && resume.programId === program.id && resume.sessionId === session.id
         ? resume
         : undefined
     return (
       <SessionScreen
-        key={`${session.id}-${restored ? 'resume' : 'fresh'}`}
+        key={`${session.id}-${mode}-${restored ? 'resume' : 'fresh'}`}
         title={displayTitle(program)}
         sessionName={session.name}
+        mode={mode}
         segments={segments}
         glossary={program.glossary}
         restored={restored}
@@ -168,6 +188,7 @@ export default function App() {
             programId: program.id,
             sessionId: session.id,
             includeWarmup,
+            mode,
             ...state,
             savedAt: Date.now(),
           })

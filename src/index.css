@@ -253,6 +253,30 @@ h2 {
   outline-offset: 2px;
 }
 
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 24px;
+}
+
+.mode-switch button {
+  min-height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mode-switch button.is-on {
+  border-color: var(--copper);
+  color: var(--ink);
+  background: var(--bg-2);
+}
+
 .sessions {
   display: grid;
   gap: 12px;
@@ -451,6 +475,10 @@ h2 {
 .session-prepare { --phase: var(--prepare); }
 
 .session-work .phase { visibility: hidden; }
+.session-work.is-emom .phase {
+  visibility: visible;
+  color: var(--work);
+}
 .session-work .clock { color: var(--work); }
 .session-rest .phase,
 .session-rest .clock { color: var(--rest); }
@@ -531,11 +559,39 @@ h2 {
   background: var(--phase);
 }
 
+.session-actions {
+  margin-top: auto;
+}
+
+.complete-btn {
+  width: 100%;
+  min-height: 56px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--copper);
+  color: #140800;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .controls {
   display: grid;
   grid-template-columns: 1.4fr 0.8fr;
   gap: 10px;
-  margin-top: auto;
+}
+
+.end-workout {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .sheet {

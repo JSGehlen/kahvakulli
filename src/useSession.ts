@@ -10,6 +10,7 @@ type Engine = {
   index: number
   remainingMs: number
   endsAt: number | null
+  emomResting: boolean
 }
 
 function playCue(kind: Segment['kind']): void {
@@ -25,6 +26,7 @@ function engineFromRestore(segments: Segment[], restored?: RestoredTimer): Engin
       index: 0,
       remainingMs: (segments[0]?.durationSec ?? 0) * 1000,
       endsAt: null,
+      emomResting: false,
     }
   }
   if (restored.status === 'running') {
@@ -33,6 +35,7 @@ function engineFromRestore(segments: Segment[], restored?: RestoredTimer): Engin
       index: restored.index,
       remainingMs: restored.remainingMs,
       endsAt: performance.now() + restored.remainingMs,
+      emomResting: Boolean(restored.emomResting),
     }
   }
   return {
@@ -40,6 +43,7 @@ function engineFromRestore(segments: Segment[], restored?: RestoredTimer): Engin
     index: restored.index,
     remainingMs: restored.remainingMs,
     endsAt: null,
+    emomResting: Boolean(restored.emomResting),
   }
 }
 
@@ -49,6 +53,7 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
     status: seeded.status,
     index: seeded.index,
     remainingMs: seeded.remainingMs,
+    emomResting: seeded.emomResting,
   })
   const engine = useRef<Engine>(seeded)
   const segmentsRef = useRef(segments)
@@ -64,6 +69,7 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
       status: e.status,
       index: e.index,
       remainingMs: e.remainingMs,
+      emomResting: e.emomResting,
     })
   }
 
@@ -73,15 +79,17 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
     const nextIndex = e.index + 1
     lastTickSec.current = null
     if (nextIndex >= list.length) {
-      e.status = 'done'
-      e.remainingMs = 0
-      e.endsAt = null
+    e.status = 'done'
+    e.remainingMs = 0
+    e.endsAt = null
+    e.emomResting = false
       cueDone()
       publish()
       return
     }
     const next = list[nextIndex]
     e.index = nextIndex
+    e.emomResting = false
     e.remainingMs = next.durationSec * 1000
     e.endsAt = now + e.remainingMs
     playCue(next.kind)
@@ -130,6 +138,7 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
       index: 0,
       remainingMs: first.durationSec * 1000,
       endsAt: performance.now() + first.durationSec * 1000,
+      emomResting: false,
     }
     playCue(first.kind)
     publish()
@@ -162,6 +171,18 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
     advanceLocked(performance.now())
   }
 
+  const complete = () => {
+    const e = engine.current
+    if (e.status === 'idle' || e.status === 'done' || e.emomResting) return
+    e.emomResting = true
+    if (e.status === 'paused' && e.remainingMs > 0) {
+      e.status = 'running'
+      e.endsAt = performance.now() + e.remainingMs
+    }
+    cueRest()
+    publish()
+  }
+
   const segment = segments[view.index]
   const progress = segment
     ? Math.min(1, Math.max(0, 1 - view.remainingMs / (segment.durationSec * 1000)))
@@ -171,11 +192,13 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
     status: view.status,
     index: view.index,
     remainingMs: view.remainingMs,
+    emomResting: view.emomResting,
     segment,
     progress,
     start,
     pause,
     resume,
     skip,
+    complete,
   }
 }

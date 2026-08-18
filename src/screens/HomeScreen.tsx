@@ -1,13 +1,15 @@
 import { estimateSessionSeconds, formatMinutes, sessionMinutes } from '../timeline.ts'
 import { displayTitle, levelLabel } from '../loadWorkouts.ts'
-import type { Program, ScheduleRow, Session } from '../types.ts'
+import type { Program, ScheduleRow, Session, SessionMode } from '../types.ts'
 
 type Props = {
   program: Program
   previous?: Program
   includeWarmup: boolean
+  mode: SessionMode
   doneSessionIds: string[]
   onToggleWarmup: () => void
+  onModeChange: (mode: SessionMode) => void
   onBack: () => void
   onStart: (session: Session) => void
 }
@@ -105,8 +107,10 @@ export function ProgramScreen({
   program,
   previous,
   includeWarmup,
+  mode,
   doneSessionIds,
   onToggleWarmup,
+  onModeChange,
   onBack,
   onStart,
 }: Props) {
@@ -190,12 +194,34 @@ export function ProgramScreen({
         </label>
       ) : null}
 
+      <div className="mode-switch" role="radiogroup" aria-label="Workout timing">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={mode === 'regular'}
+          className={mode === 'regular' ? 'is-on' : undefined}
+          onClick={() => onModeChange('regular')}
+        >
+          Regular
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={mode === 'emom'}
+          className={mode === 'emom' ? 'is-on' : undefined}
+          onClick={() => onModeChange('emom')}
+        >
+          EMOM
+        </button>
+      </div>
+
       <section className="sessions">
         {program.sessions.map((session) => {
           const seconds = estimateSessionSeconds(
             session,
             program.warmup?.totalSec,
             includeWarmup,
+            mode,
           )
           const isCurrent = session.name === nextName
           return (
@@ -207,6 +233,7 @@ export function ProgramScreen({
                 <div>
                   <h2>{session.name}</h2>
                   <p className="session-meta">
+                    {mode === 'emom' ? 'EMOM · ' : ''}
                     {session.rounds} rounds · {session.exercises.length} moves ·{' '}
                     {formatMinutes(seconds)}
                   </p>
@@ -217,8 +244,17 @@ export function ProgramScreen({
                   <li key={exercise.name}>
                     <strong>{exercise.name}</strong>
                     <span>
-                      {exercise.workSec}s work · {exercise.restSec}s rest
-                      {exercise.bell ? ` · ${exercise.bell}` : ''}
+                      {mode === 'emom'
+                        ? [
+                            exercise.reps ? `${exercise.reps} reps` : exercise.target,
+                            'On the minute',
+                            exercise.bell,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')
+                        : `${exercise.workSec}s work · ${exercise.restSec}s rest${
+                            exercise.bell ? ` · ${exercise.bell}` : ''
+                          }`}
                     </span>
                   </li>
                 ))}
@@ -242,12 +278,14 @@ export function HomeScreen({
   programs,
   currentProgram,
   doneSessionIds,
+  mode,
   onOpen,
   onStartToday,
 }: {
   programs: Program[]
   currentProgram?: Program
   doneSessionIds: string[]
+  mode: SessionMode
   onOpen: (id: string) => void
   onStartToday: (session: Session) => void
 }) {
@@ -259,7 +297,7 @@ export function HomeScreen({
   const todayMinutes =
     currentProgram && todaySession
       ? formatMinutes(
-          estimateSessionSeconds(todaySession, currentProgram.warmup?.totalSec, true),
+          estimateSessionSeconds(todaySession, currentProgram.warmup?.totalSec, true, mode),
         )
       : undefined
   const minutes = programs.flatMap((program) =>

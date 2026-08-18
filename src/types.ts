@@ -2,6 +2,8 @@ export type Exercise = {
   name: string
   workSec: number
   restSec: number
+  reps?: number
+  target?: string
   bell?: string
   notes: string[]
 }
@@ -56,6 +58,8 @@ export type Program = {
   sourceFile: string
 }
 
+export type SessionMode = 'regular' | 'emom'
+
 export type SegmentKind = 'warmup' | 'prepare' | 'work' | 'rest'
 
 export type Segment = {
@@ -68,6 +72,8 @@ export type Segment = {
   exerciseIndex?: number
   totalExercises?: number
   bell?: string
+  reps?: number
+  target?: string
   nextTitle?: string
   glossaryName?: string
 }

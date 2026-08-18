@@ -213,7 +213,9 @@ function parseWarmup(body: string): Warmup {
 }
 
 function parseMetaValue(line: string): { key: string; value: string } | undefined {
-  const match = line.match(/^(work|rest|suggested\s+bell|bell|notes?)\s*:\s*(.+)$/i)
+  const match = line.match(
+    /^(work|rest|suggested\s+bell|bell|notes?|reps?|target)\s*:\s*(.+)$/i,
+  )
   if (!match) return undefined
   const key = match[1].toLowerCase().replace(/\s+/g, ' ')
   return { key, value: match[2].trim() }
@@ -263,6 +265,11 @@ function parseSession(name: string, body: string): Session {
       if (meta.key === 'work') current.workSec = parseDurationToSeconds(meta.value) ?? current.workSec
       else if (meta.key === 'rest') current.restSec = parseDurationToSeconds(meta.value) ?? 0
       else if (meta.key === 'bell' || meta.key === 'suggested bell') current.bell = meta.value
+      else if (meta.key === 'rep' || meta.key === 'reps') {
+        const count = Number(meta.value.match(/\d+/)?.[0])
+        if (count) current.reps = count
+        else current.target = meta.value
+      } else if (meta.key === 'target') current.target = meta.value
       else current.notes.push(meta.value)
       continue
     }

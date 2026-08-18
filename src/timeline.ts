@@ -1,19 +1,28 @@
 import { matchGlossary } from './parseWorkout.ts'
-import type { Program, Segment, Session } from './types.ts'
+import type { Exercise, Program, Segment, Session, SessionMode } from './types.ts'
+
+export function intervalFor(exercise: Exercise, mode: SessionMode) {
+  if (mode === 'emom') {
+    return { workSec: 60, restSec: 0 }
+  }
+  return { workSec: exercise.workSec, restSec: exercise.restSec }
+}
 
 export function estimateSessionSeconds(
   session: Session,
   warmupSec = 0,
   includeWarmup = false,
+  mode: SessionMode = 'regular',
 ): number {
   let total = includeWarmup ? warmupSec : 0
   total += 5
   for (let round = 1; round <= session.rounds; round += 1) {
     session.exercises.forEach((exercise, index) => {
-      total += exercise.workSec
+      const { workSec, restSec } = intervalFor(exercise, mode)
+      total += workSec
       const last =
         round === session.rounds && index === session.exercises.length - 1
-      if (!last) total += Math.max(exercise.restSec, 0)
+      if (!last) total += Math.max(restSec, 0)
     })
   }
   return total
@@ -31,10 +40,17 @@ export function formatMinutes(totalSec: number): string {
   return `~${minutes} min`
 }
 
-export function sessionMinutes(program: Program, session: Session, includeWarmup = true): number {
+export function sessionMinutes(
+  program: Program,
+  session: Session,
+  includeWarmup = true,
+  mode: SessionMode = 'regular',
+): number {
   return Math.max(
     1,
-    Math.round(estimateSessionSeconds(session, program.warmup?.totalSec, includeWarmup) / 60),
+    Math.round(
+      estimateSessionSeconds(session, program.warmup?.totalSec, includeWarmup, mode) / 60,
+    ),
   )
 }
 
@@ -47,6 +63,7 @@ export function buildTimeline(
   program: Program,
   session: Session,
   includeWarmup: boolean,
+  mode: SessionMode = 'regular',
 ): Segment[] {
   const segments: Segment[] = []
 
@@ -82,8 +99,10 @@ export function buildTimeline(
       totalRounds: session.rounds,
       exerciseIndex: 1,
       totalExercises: session.exercises.length,
-      bell: first.bell,
-      nextTitle: first.name,
+          bell: first.bell,
+          reps: first.reps,
+          target: first.target,
+          nextTitle: first.name,
       glossaryName: first.name,
     })
   }
@@ -96,18 +115,44 @@ export function buildTimeline(
       const last =
         round === session.rounds && index === session.exercises.length - 1
       const glossary = matchGlossary(exercise.name, program.glossary)
+      const minute =
+        (round - 1) * session.exercises.length + index + 1
+      const totalMinutes = session.rounds * session.exercises.length
+
+      if (mode === 'emom') {
+        segments.push({
+          kind: 'work',
+          title: exercise.name,
+          subtitle: `Minute ${minute}/${totalMinutes} · Round ${round}/${session.rounds}`,
+          durationSec: 60,
+          round,
+          totalRounds: session.rounds,
+          exerciseIndex: index + 1,
+          totalExercises: session.exercises.length,
+          bell: exercise.bell,
+          reps: exercise.reps,
+          target: exercise.target,
+          nextTitle: last ? undefined : nextExercise?.name,
+          glossaryName: glossary?.name ?? exercise.name,
+        })
+        return
+      }
+
+      const { workSec, restSec } = intervalFor(exercise, mode)
 
       segments.push({
         kind: 'work',
         title: exercise.name,
         subtitle: `Round ${round}/${session.rounds} · Move ${index + 1}/${session.exercises.length}`,
-        durationSec: exercise.workSec,
+        durationSec: workSec,
         round,
         totalRounds: session.rounds,
         exerciseIndex: index + 1,
         totalExercises: session.exercises.length,
         bell: exercise.bell,
-        nextTitle: last ? undefined : `Rest ${exercise.restSec}s`,
+        reps: exercise.reps,
+        target: exercise.target,
+        nextTitle: last ? undefined : `Rest ${restSec}s`,
         glossaryName: glossary?.name ?? exercise.name,
       })
 
@@ -117,7 +162,7 @@ export function buildTimeline(
           kind: 'rest',
           title: 'Breathe',
           subtitle: `Round ${round}/${session.rounds} · Move ${index + 1}/${session.exercises.length}`,
-          durationSec: Math.max(exercise.restSec, 0),
+          durationSec: Math.max(restSec, 0),
           round,
           totalRounds: session.rounds,
           exerciseIndex: index + 1,

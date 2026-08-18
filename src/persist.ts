@@ -1,13 +1,16 @@
-import type { Segment } from './types.ts'
+import type { Segment, SessionMode } from './types.ts'
 
 const KEY = 'kettlebell:active-session'
 const LAST_PROGRAM_KEY = 'kettlebell:last-program'
+const MODE_KEY = 'kettlebell:session-mode'
 
 export type SavedWorkout = {
   version: 1
   programId: string
   sessionId: string
   includeWarmup: boolean
+  mode?: SessionMode
+  emomResting?: boolean
   index: number
   remainingMs: number
   status: 'running' | 'paused' | 'done'
@@ -18,6 +21,7 @@ export type RestoredTimer = {
   index: number
   remainingMs: number
   status: 'running' | 'paused' | 'done'
+  emomResting?: boolean
 }
 
 export function loadSavedWorkout(): SavedWorkout | null {
@@ -60,6 +64,24 @@ export function loadLastProgramId(): string | null {
 export function saveLastProgramId(id: string): void {
   try {
     localStorage.setItem(LAST_PROGRAM_KEY, id)
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+export function loadSessionMode(): SessionMode {
+  try {
+    const raw = localStorage.getItem(MODE_KEY)
+    if (raw === 'emom') return 'emom'
+    return 'regular'
+  } catch {
+    return 'regular'
+  }
+}
+
+export function saveSessionMode(mode: SessionMode): void {
+  try {
+    localStorage.setItem(MODE_KEY, mode)
   } catch {
     // Ignore storage failures.
   }
