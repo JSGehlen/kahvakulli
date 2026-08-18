@@ -15,6 +15,7 @@ import {
   type RestoredTimer,
 } from './persist.ts'
 import { HomeScreen, ProgramScreen } from './screens/HomeScreen.tsx'
+import { collectGlossary, GlossaryScreen } from './screens/GlossaryScreen.tsx'
 import { DoneScreen, SessionScreen } from './screens/SessionScreen.tsx'
 import { buildTimeline } from './timeline.ts'
 import type { Program, Session, SessionMode } from './types.ts'
@@ -22,6 +23,7 @@ import type { Program, Session, SessionMode } from './types.ts'
 type Route =
   | { name: 'home' }
   | { name: 'program'; id: string }
+  | { name: 'glossary' }
   | { name: 'session'; id: string; sessionId: string }
   | { name: 'done'; id: string; sessionId: string }
 
@@ -131,6 +133,7 @@ export default function App() {
         setRoute({ name: 'program', id })
       }}
       onStartToday={startToday}
+      onOpenGlossary={() => setRoute({ name: 'glossary' })}
     />
   )
 
@@ -142,6 +145,15 @@ export default function App() {
 
   if (route.name === 'home') {
     return openHome()
+  }
+
+  if (route.name === 'glossary') {
+    return (
+      <GlossaryScreen
+        entries={collectGlossary(programs)}
+        onBack={() => setRoute({ name: 'home' })}
+      />
+    )
   }
 
   if (!program) {

@@ -281,6 +281,7 @@ export function HomeScreen({
   mode,
   onOpen,
   onStartToday,
+  onOpenGlossary,
 }: {
   programs: Program[]
   currentProgram?: Program
@@ -288,6 +289,7 @@ export function HomeScreen({
   mode: SessionMode
   onOpen: (id: string) => void
   onStartToday: (session: Session) => void
+  onOpenGlossary: () => void
 }) {
   const today = currentProgram ? todaysRow(currentProgram) : undefined
   const todaySession = today
@@ -325,6 +327,7 @@ export function HomeScreen({
       <p className="lede">
         Build strength, conditioning, and confidence—one level at a time.
       </p>
+      {summary ? <p className="program-meta">{summary}</p> : null}
 
       {todaySession && !todayDone ? (
         <button
@@ -375,7 +378,14 @@ export function HomeScreen({
               )
             })}
           </ul>
-          {summary ? <p className="program-meta">{summary}</p> : null}
+          <button className="glossary-card" type="button" onClick={onOpenGlossary}>
+            <span className="eyebrow">Moves</span>
+            <strong>Glossary</strong>
+            <span className="card-action">
+              View
+              <span className="chevron" aria-hidden="true" />
+            </span>
+          </button>
         </>
       )}
     </main>

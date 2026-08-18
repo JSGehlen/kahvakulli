@@ -422,10 +422,99 @@ h2 {
   flex-shrink: 0;
 }
 
+.page.home .lede {
+  margin-bottom: 8px;
+}
+
 .program-meta {
-  margin: 22px 0 0;
+  margin: 0 0 28px;
   color: var(--muted);
   font-size: 0.88rem;
+}
+
+.glossary-card {
+  width: 100%;
+  margin-top: 32px;
+  padding: 14px 16px;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.glossary-card .eyebrow {
+  color: var(--quiet);
+}
+
+.glossary-card strong {
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--muted);
+}
+
+.glossary-card .card-action {
+  margin-top: 2px;
+  color: var(--quiet);
+}
+
+.glossary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.glossary-list button {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.glossary-list button.is-open {
+  border-color: var(--copper);
+}
+
+.glossary-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.glossary-name strong {
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.glossary-list .chevron {
+  transform: rotate(135deg);
+}
+
+.glossary-list button.is-open .chevron {
+  transform: rotate(-45deg);
+}
+
+.glossary-list ol,
+.glossary-notes {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.glossary-notes {
+  list-style: disc;
 }
 
 .empty p {
@@ -664,6 +753,11 @@ h2 {
   .program-list button:hover {
     border-color: var(--copper);
     transform: translateY(-1px);
+  }
+
+  .glossary-list button:hover,
+  .glossary-card:hover {
+    border-color: var(--copper);
   }
 }
 
