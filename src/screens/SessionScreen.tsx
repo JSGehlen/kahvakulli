@@ -174,7 +174,9 @@ export function SessionScreen({
 
       <p className="meta">{segment.subtitle}</p>
       {segment.kind !== 'prepare' && segment.nextTitle ? (
-        <p className="next">Next: {segment.nextTitle}</p>
+        <p className="next">
+          {segment.kind === 'warmup' ? 'First lift' : 'Next'}: {segment.nextTitle}
+        </p>
       ) : null}
       {segment.kind !== 'work' &&
       entries.some((entry) => entry.notes.length > 0) ? (
@@ -235,9 +237,11 @@ export function SessionScreen({
 
 export function DoneScreen({
   sessionName,
+  programTitle,
   onHome,
 }: {
   sessionName: string
+  programTitle: string
   onHome: () => void
 }) {
   return (
@@ -246,7 +250,7 @@ export function DoneScreen({
       <h1>{sessionName}</h1>
       <p className="lede">Rack the bell. That was the work.</p>
       <button className="primary" type="button" onClick={onHome}>
-        Back to programs
+        Back to {programTitle}
       </button>
     </main>
   )

@@ -184,6 +184,7 @@ export default function App() {
   return (
     <DoneScreen
       sessionName={session?.name ?? 'Workout'}
+      programTitle={displayTitle(program)}
       onHome={() => leaveWorkout({ name: 'program', id: program.id })}
     />
   )

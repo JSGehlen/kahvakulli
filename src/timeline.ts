@@ -116,7 +116,7 @@ export function buildTimeline(
         const nextName = nextExercise?.name ?? 'Next'
         segments.push({
           kind: 'rest',
-          title: 'Rest',
+          title: 'Breathe',
           subtitle: `Round ${round}/${session.rounds} · Move ${index + 1}/${session.exercises.length}`,
           durationSec: Math.max(exercise.restSec, 0),
           round,
