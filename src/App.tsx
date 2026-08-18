@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { unlockAudio } from './audio.ts'
+import { releaseAudio, unlockAudio } from './audio.ts'
 import { displayTitle, loadPrograms } from './loadWorkouts.ts'
 import {
   clearSavedWorkout,
@@ -140,6 +140,7 @@ export default function App() {
   const leaveWorkout = (next: Route) => {
     clearSavedWorkout()
     setResume(undefined)
+    void releaseAudio()
     setRoute(next)
   }
 
@@ -208,6 +209,9 @@ export default function App() {
         onExit={() => leaveWorkout({ name: 'program', id: program.id })}
         onDone={() => {
           completeSession(program.id, session.id)
+          window.setTimeout(() => {
+            void releaseAudio()
+          }, 900)
           setRoute({ name: 'done', id: program.id, sessionId: session.id })
         }}
       />
