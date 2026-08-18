@@ -60,10 +60,15 @@ function weekRows(program: Program): WeekRow[] {
   const scheduled = new Map(
     program.schedule.map((row) => [row.day.toLowerCase(), row]),
   )
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-  if (!days.some((day) => day.toLowerCase() === weekday.toLowerCase())) {
-    days.push(weekday)
-  }
+  const days = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ]
   for (const row of program.schedule) {
     if (!days.some((day) => day.toLowerCase() === row.day.toLowerCase())) {
       days.push(row.day)
@@ -94,6 +99,14 @@ function statusLabel(status: WeekStatus): string {
   return 'Upcoming'
 }
 
+function shortDay(day: string): string {
+  return day.slice(0, 3)
+}
+
+function shortWorkout(name: string): string {
+  return name.replace(/^workout\s+/i, '').trim() || name
+}
+
 function nextWorkoutName(program: Program, doneIds: Set<string>): string | undefined {
   return [...program.schedule]
     .sort((a, b) => weekOrder(a.day) - weekOrder(b.day))
@@ -101,6 +114,70 @@ function nextWorkoutName(program: Program, doneIds: Set<string>): string | undef
       const session = sessionForRow(program, row)
       return Boolean(session && !doneIds.has(session.id))
     })?.workout
+}
+
+function SessionCard({
+  session,
+  program,
+  includeWarmup,
+  mode,
+  featured,
+  onStart,
+}: {
+  session: Session
+  program: Program
+  includeWarmup: boolean
+  mode: SessionMode
+  featured: boolean
+  onStart: (session: Session) => void
+}) {
+  const seconds = estimateSessionSeconds(
+    session,
+    program.warmup?.totalSec,
+    includeWarmup,
+    mode,
+  )
+  return (
+    <article className={featured ? 'session-card is-current' : 'session-card'}>
+      <header>
+        <div>
+          <h2>{session.name}</h2>
+          <p className="session-meta">
+            {mode === 'emom' ? 'EMOM · ' : ''}
+            {session.rounds} rounds · {session.exercises.length} moves ·{' '}
+            {formatMinutes(seconds)}
+          </p>
+        </div>
+      </header>
+      <ol>
+        {session.exercises.map((exercise) => (
+          <li key={exercise.name}>
+            <strong>{exercise.name}</strong>
+            <span>
+              {mode === 'emom'
+                ? [
+                    exercise.reps ? `${exercise.reps} reps` : exercise.target,
+                    'On the minute',
+                    exercise.bell,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
+                : `${exercise.workSec}s work · ${exercise.restSec}s rest${
+                    exercise.bell ? ` · ${exercise.bell}` : ''
+                  }`}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <button
+        className={featured ? 'primary' : 'secondary'}
+        type="button"
+        onClick={() => onStart(session)}
+      >
+        Start {session.name}
+      </button>
+    </article>
+  )
 }
 
 export function ProgramScreen({
@@ -116,6 +193,11 @@ export function ProgramScreen({
 }: Props) {
   const doneIds = new Set(doneSessionIds)
   const nextName = nextWorkoutName(program, doneIds)
+  const todayRow = todaysRow(program)
+  const featured = todayRow ? sessionForRow(program, todayRow) : undefined
+  const others = featured
+    ? program.sessions.filter((session) => session.id !== featured.id)
+    : program.sessions
 
   return (
     <main className="page">
@@ -144,9 +226,9 @@ export function ProgramScreen({
       ) : null}
 
       {program.schedule.length > 0 ? (
-        <section>
+        <section className="week">
           <h2>This week</h2>
-          <ol className="schedule">
+          <ol className="week-strip">
             {weekRows(program).map((row) => {
               const session = row.workout
                 ? program.sessions.find((item) => item.name === row.workout)
@@ -155,23 +237,36 @@ export function ProgramScreen({
                 row,
                 Boolean(session && doneIds.has(session.id)),
               )
+              const isToday = row.day.toLowerCase() === weekday.toLowerCase()
+              const label = [
+                row.day,
+                row.rest ? 'Rest' : row.workout,
+                status ? statusLabel(status) : undefined,
+              ]
+                .filter(Boolean)
+                .join(', ')
               return (
                 <li
                   key={row.day}
+                  aria-label={label}
                   className={[
-                    status === 'today' ? 'today' : undefined,
+                    isToday ? 'today' : undefined,
                     status === 'done' ? 'is-done' : undefined,
                     row.rest ? 'is-rest' : undefined,
                   ]
                     .filter(Boolean)
                     .join(' ')}
                 >
-                  <span>{row.day}</span>
-                  {row.rest ? (
-                    <span className="rest-label">Rest</span>
-                  ) : (
-                    <strong>{row.workout}</strong>
-                  )}
+                  <span className="week-day">
+                    {isToday ? row.day : shortDay(row.day)}
+                  </span>
+                  <strong className="week-work">
+                    {row.rest
+                      ? 'Rest'
+                      : isToday
+                        ? (row.workout ?? '')
+                        : shortWorkout(row.workout ?? '')}
+                  </strong>
                   <span className={status ? `status is-${status}` : 'status'}>
                     {status ? statusLabel(status) : ''}
                   </span>
@@ -216,59 +311,31 @@ export function ProgramScreen({
       </div>
 
       <section className="sessions">
-        {program.sessions.map((session) => {
-          const seconds = estimateSessionSeconds(
-            session,
-            program.warmup?.totalSec,
-            includeWarmup,
-            mode,
-          )
-          const isCurrent = session.name === nextName
-          return (
-            <article
-              key={session.id}
-              className={isCurrent ? 'session-card is-current' : 'session-card'}
-            >
-              <header>
-                <div>
-                  <h2>{session.name}</h2>
-                  <p className="session-meta">
-                    {mode === 'emom' ? 'EMOM · ' : ''}
-                    {session.rounds} rounds · {session.exercises.length} moves ·{' '}
-                    {formatMinutes(seconds)}
-                  </p>
-                </div>
-              </header>
-              <ol>
-                {session.exercises.map((exercise) => (
-                  <li key={exercise.name}>
-                    <strong>{exercise.name}</strong>
-                    <span>
-                      {mode === 'emom'
-                        ? [
-                            exercise.reps ? `${exercise.reps} reps` : exercise.target,
-                            'On the minute',
-                            exercise.bell,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')
-                        : `${exercise.workSec}s work · ${exercise.restSec}s rest${
-                            exercise.bell ? ` · ${exercise.bell}` : ''
-                          }`}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <button
-                className={isCurrent ? 'primary' : 'secondary'}
-                type="button"
-                onClick={() => onStart(session)}
-              >
-                Start {session.name}
-              </button>
-            </article>
-          )
-        })}
+        {featured ? (
+          <SessionCard
+            key={featured.id}
+            session={featured}
+            program={program}
+            includeWarmup={includeWarmup}
+            mode={mode}
+            featured
+            onStart={onStart}
+          />
+        ) : null}
+        {featured && others.length > 0 ? (
+          <h2 className="sessions-other">Other workouts</h2>
+        ) : null}
+        {others.map((session) => (
+          <SessionCard
+            key={session.id}
+            session={session}
+            program={program}
+            includeWarmup={includeWarmup}
+            mode={mode}
+            featured={!featured && session.name === nextName}
+            onStart={onStart}
+          />
+        ))}
       </section>
     </main>
   )

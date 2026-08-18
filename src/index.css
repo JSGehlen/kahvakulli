@@ -111,7 +111,7 @@ h2 {
 
 .chips,
 .program-list,
-.schedule,
+.week-strip,
 .sessions,
 .session-card ol,
 .empty {
@@ -135,13 +135,6 @@ h2 {
   font-size: 0.88rem;
 }
 
-.schedule {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 22px;
-}
-
-.schedule li,
 .session-card,
 .program-list button,
 .empty {
@@ -150,51 +143,131 @@ h2 {
   border-radius: 18px;
 }
 
-.schedule li {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr) auto;
-  gap: 8px;
+.week-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 22px;
+  padding: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.week-strip li {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   align-items: center;
-  padding: 14px 16px;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  text-align: center;
 }
 
-.schedule .today {
-  border-color: var(--copper);
-}
-
-.schedule .is-done {
+.week-day {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-.schedule .is-rest {
-  background: transparent;
-  border-color: var(--line);
-  color: var(--quiet);
-  pointer-events: none;
-  cursor: default;
+.week-work {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
 }
 
-.schedule .rest-label {
-  font-weight: 500;
-  color: var(--quiet);
+.week-strip li:not(.today) {
+  opacity: 0.72;
 }
 
-.schedule .is-rest.today {
+.week-strip .today {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 42%;
+  gap: 3px;
+  padding: 8px 12px;
   border-color: var(--copper);
+  background: var(--bg);
+  opacity: 1;
 }
 
-.schedule .status {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.week-strip .today .week-day,
+.week-strip .today .week-work,
+.week-strip .today .status {
+  white-space: nowrap;
+}
+
+.week-strip .today .week-day {
+  color: var(--copper);
+}
+
+.week-strip .today .week-work {
+  font-size: 1.12rem;
+}
+
+.week-strip .is-done {
+  color: var(--muted);
+}
+
+.week-strip .is-done .week-day,
+.week-strip .is-done .week-work {
+  color: var(--muted);
+}
+
+.week-strip .is-rest {
   color: var(--quiet);
-  text-align: right;
-  min-height: 1em;
 }
 
-.schedule .status.is-today,
-.schedule .status.is-done {
+.week-strip .is-rest .week-day,
+.week-strip .is-rest .week-work {
+  color: var(--quiet);
+  font-weight: 500;
+}
+
+.week-strip .is-rest .week-work {
+  font-size: 0.72rem;
+  letter-spacing: 0;
+}
+
+.week-strip .today.is-rest .week-day {
+  color: var(--copper);
+}
+
+.week-strip .today.is-rest .week-work {
+  font-size: 1rem;
+}
+
+.week-strip .status {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--quiet);
+  min-height: 1.15em;
+  line-height: 1.15;
+}
+
+.week-strip .today .status {
+  font-size: 0.62rem;
+}
+
+.week-strip .status.is-today,
+.week-strip .status.is-done {
+  color: var(--copper);
+}
+
+.week-strip .today.is-done,
+.week-strip .today.is-done .week-work {
+  color: var(--ink);
+}
+
+.week-strip .today.is-done .week-day {
   color: var(--copper);
 }
 
@@ -280,6 +353,10 @@ h2 {
 .sessions {
   display: grid;
   gap: 12px;
+}
+
+.sessions-other {
+  margin: 10px 0 0;
 }
 
 .session-card {
