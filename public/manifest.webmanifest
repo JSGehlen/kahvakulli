@@ -1,0 +1,18 @@
+{
+  "name": "Kettlebell",
+  "short_name": "Kettlebell",
+  "description": "Timer-first kettlebell workouts from markdown files",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0d0b",
+  "theme_color": "#0c0d0b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
