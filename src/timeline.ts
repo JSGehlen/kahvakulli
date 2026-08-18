@@ -38,10 +38,9 @@ export function sessionMinutes(program: Program, session: Session, includeWarmup
   )
 }
 
-export function formatWarmupMeta(label: string): string {
-  const match = label.match(/(\d+\s*[–-]\s*\d+)\s*min/i)
-  if (match) return `Repeats for ${match[1].replace(/\s+/g, '')} min`
-  return label
+export function formatWarmupMeta(totalSec: number): string {
+  const minutes = Math.max(1, Math.round(totalSec / 60))
+  return `Repeats for ${minutes} min`
 }
 
 export function buildTimeline(
@@ -63,7 +62,7 @@ export function buildTimeline(
         segments.push({
           kind: 'warmup',
           title: step.name,
-          subtitle: formatWarmupMeta(warmup.label),
+          subtitle: formatWarmupMeta(warmup.totalSec),
           durationSec: step.durationSec,
           nextTitle: first?.name,
         })

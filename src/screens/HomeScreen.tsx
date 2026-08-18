@@ -39,10 +39,9 @@ function formatEquipment(item: string): string {
   return item.replace(/^1\s*[×x]\s*/i, '').trim()
 }
 
-function warmupToggleLabel(label: string): string {
-  const match = label.match(/(\d+\s*[–-]\s*\d+)\s*min/i)
-  if (match) return `Include ${match[1].replace(/\s+/g, '')} min warm-up`
-  return 'Include warm-up'
+function warmupToggleLabel(totalSec: number): string {
+  const minutes = Math.max(1, Math.round(totalSec / 60))
+  return `Include ${minutes} min warm-up`
 }
 
 function weekOrder(dayName: string): number {
@@ -187,7 +186,7 @@ export function ProgramScreen({
             onChange={onToggleWarmup}
           />
           <span className="switch" aria-hidden="true" />
-          {warmupToggleLabel(program.warmup.label)}
+          {warmupToggleLabel(program.warmup.totalSec)}
         </label>
       ) : null}
 
