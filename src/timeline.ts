@@ -12,7 +12,10 @@ export function usesReps(exercise: Exercise): boolean {
 }
 
 export function canPlayEmom(session: Session): boolean {
-  return session.type === 'regular'
+  return (
+    session.type === 'regular' &&
+    session.exercises.some((exercise) => Boolean(exercise.reps) && exercise.workSec > 0)
+  )
 }
 
 export function effectiveType(
@@ -36,7 +39,11 @@ export function exerciseLine(
       .join(' · ')
   }
   if (type === 'circuit' || usesReps(exercise)) {
-    return [exercise.reps ? `${exercise.reps} reps` : exercise.target, exercise.bell]
+    return [
+      exercise.reps ? `${exercise.reps} reps` : exercise.target,
+      type !== 'circuit' && exercise.restSec > 0 ? `${exercise.restSec}s rest` : undefined,
+      exercise.bell,
+    ]
       .filter(Boolean)
       .join(' · ')
   }

@@ -155,9 +155,7 @@ export function SessionScreen({
     : hideWorkClock
       ? [segment.reps ? 'reps' : segment.target, segment.bell].filter(Boolean).join(' · ') ||
         undefined
-      : [segment.reps ? `${segment.reps} reps` : segment.target, segment.bell]
-          .filter(Boolean)
-          .join(' · ') || undefined
+      : [segment.target, segment.bell].filter(Boolean).join(' · ') || undefined
   const showComplete =
     (workoutType === 'emom' && segment.kind === 'work' && !emomResting) ||
     (awaiting && kind === 'work')
