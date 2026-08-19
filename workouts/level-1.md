@@ -1,4 +1,4 @@
-# Level 1 — Kettlebell Program
+# Level 1 — Beginner Month 1
 
 Equipment
 

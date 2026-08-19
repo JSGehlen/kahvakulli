@@ -350,6 +350,51 @@ h2 {
   background: var(--bg-2);
 }
 
+.mode-switch.types {
+  grid-template-columns: 1fr 1fr 1fr;
+  margin: 0 0 16px;
+}
+
+.page.program h1 {
+  font-size: clamp(1.4rem, 6.4vw, 1.75rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.page.program .back {
+  margin-bottom: 10px;
+}
+
+.program-status {
+  margin: 8px 0 16px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.page.program .toggle {
+  margin: 0 0 12px;
+}
+
+.page.program .mode-switch {
+  margin: 0 0 16px;
+}
+
+.page.program .chips {
+  margin: 28px 0 0;
+}
+
+.phase-name {
+  margin: 20px 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.proceed {
+  width: 100%;
+  margin: 0 0 16px;
+}
+
 .sessions {
   display: grid;
   gap: 12px;
@@ -446,6 +491,73 @@ h2 {
 
 .home-start {
   margin: 0 0 22px;
+}
+
+.current-program {
+  margin: 20px 0 28px;
+  padding: 18px 16px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--copper);
+  border-radius: 18px;
+}
+
+.current-program h2 {
+  margin: 0 0 6px;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: -0.03em;
+  font-size: 1.6rem;
+}
+
+.current-meta {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.current-program .card-focus {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.current-program .primary,
+.current-program .secondary {
+  min-height: 48px;
+}
+
+.current-program .primary {
+  margin-bottom: 8px;
+}
+
+.create-block {
+  display: grid;
+  gap: 10px;
+}
+
+.create-card {
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  color: inherit;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.create-card strong {
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.page.home section {
+  margin-bottom: 28px;
+}
+
+.sign-out {
+  display: block;
+  margin: 20px 0 0;
 }
 
 .program-list {
@@ -824,6 +936,79 @@ h2 {
 
 .done .primary {
   margin-top: 28px;
+}
+
+.stack-form {
+  display: grid;
+  gap: 16px;
+}
+
+.stack-form label,
+.move-card legend {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.stack-form input,
+.stack-form textarea,
+.stack-form select {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--ink);
+  padding: 12px 14px;
+}
+
+.stack-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.stack-form .toggle {
+  margin: 0;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.move-card {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px 14px 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.pick-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.pick {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--ink);
+}
+
+.form-error {
+  margin: 0;
+  color: #e58b73;
+}
+
+.glossary-list .ghost {
+  margin: 8px 0 0;
 }
 
 /* Keep the iOS haptic switch in the viewport. display:none / visibility:hidden

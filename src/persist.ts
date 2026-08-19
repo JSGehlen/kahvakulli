@@ -147,11 +147,22 @@ export function markSessionDone(
 }
 
 export function replayElapsed(saved: SavedWorkout, segments: Segment[]): RestoredTimer {
+  const current = segments[Math.min(saved.index, Math.max(0, segments.length - 1))]
   if (saved.status !== 'running') {
     return {
       index: Math.min(saved.index, Math.max(0, segments.length - 1)),
       remainingMs: Math.max(0, saved.remainingMs),
       status: saved.status,
+      emomResting: saved.emomResting,
+    }
+  }
+
+  if (current?.awaitComplete) {
+    return {
+      index: saved.index,
+      remainingMs: 0,
+      status: 'running',
+      emomResting: saved.emomResting,
     }
   }
 
@@ -163,8 +174,12 @@ export function replayElapsed(saved: SavedWorkout, segments: Segment[]): Restore
     if (index >= segments.length) {
       return { index: Math.max(0, segments.length - 1), remainingMs: 0, status: 'done' }
     }
-    remainingMs += segments[index].durationSec * 1000
+    const next = segments[index]
+    if (next.awaitComplete) {
+      return { index, remainingMs: 0, status: 'running' }
+    }
+    remainingMs += next.durationSec * 1000
   }
 
-  return { index, remainingMs, status: 'running' }
+  return { index, remainingMs, status: 'running', emomResting: saved.emomResting }
 }

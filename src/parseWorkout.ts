@@ -281,6 +281,7 @@ function parseSession(name: string, body: string): Session {
     id: slugify(name),
     name,
     rounds,
+    type: 'regular',
     exercises,
   }
 }
@@ -299,7 +300,7 @@ function parseGlossaryEntry(chunk: string): GlossaryEntry | undefined {
     else if (/^[-*+]\s+/.test(line)) notes.push(line.replace(/^[-*+]\s+/, ''))
     else notes.push(line)
   }
-  return { name, steps, notes }
+  return { id: slugify(name), name, steps, notes }
 }
 
 function looksLikeExerciseName(heading: string): boolean {
@@ -326,7 +327,7 @@ function parseGlossary(body: string): GlossaryEntry[] {
   let notes: string[] = []
 
   const flush = () => {
-    if (name) entries.push({ name, steps, notes })
+    if (name) entries.push({ id: slugify(name), name, steps, notes })
     name = ''
     steps = []
     notes = []
@@ -434,6 +435,7 @@ export function parseWorkoutMarkdown(markdown: string, sourceFile: string): Prog
     schedule,
     warmup,
     sessions,
+    phases: [],
     glossary,
     weightReference,
     sourceFile,

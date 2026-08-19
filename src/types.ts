@@ -1,3 +1,7 @@
+export type WorkoutType = 'regular' | 'emom' | 'circuit'
+
+export type SessionMode = 'regular' | 'emom'
+
 export type Exercise = {
   name: string
   workSec: number
@@ -6,13 +10,17 @@ export type Exercise = {
   target?: string
   bell?: string
   notes: string[]
+  glossaryId?: string
 }
 
 export type Session = {
   id: string
   name: string
   rounds: number
+  type: WorkoutType
   exercises: Exercise[]
+  userId?: string | null
+  isBuiltin?: boolean
 }
 
 export type WarmupStep = {
@@ -32,14 +40,24 @@ export type ScheduleRow = {
 }
 
 export type GlossaryEntry = {
+  id: string
   name: string
   steps: string[]
   notes: string[]
+  isBuiltin?: boolean
 }
 
 export type WeightRef = {
   exercise: string
   bell: string
+}
+
+export type ProgramPhase = {
+  month: number
+  name: string
+  focus?: string
+  schedule: ScheduleRow[]
+  sessions: Session[]
 }
 
 export type Program = {
@@ -53,12 +71,26 @@ export type Program = {
   schedule: ScheduleRow[]
   warmup?: Warmup
   sessions: Session[]
+  phases: ProgramPhase[]
   glossary: GlossaryEntry[]
   weightReference: WeightRef[]
   sourceFile: string
+  userId?: string | null
+  isBuiltin?: boolean
+  isPublic?: boolean
+  ownerName?: string
 }
 
-export type SessionMode = 'regular' | 'emom'
+export type ProgramProgress = {
+  currentMonth: number
+  completions: Record<string, number>
+}
+
+export type Profile = {
+  id: string
+  displayName: string
+  isAdmin: boolean
+}
 
 export type SegmentKind = 'warmup' | 'prepare' | 'work' | 'rest'
 
@@ -76,4 +108,16 @@ export type Segment = {
   target?: string
   nextTitle?: string
   glossaryName?: string
+  awaitComplete?: boolean
+  hideWorkClock?: boolean
+}
+
+export const DEFAULT_WARMUP: Warmup = {
+  label: 'Repeat for 4 minutes',
+  totalSec: 240,
+  steps: [
+    { name: 'March or jog on the spot', durationSec: 30 },
+    { name: 'Slow bodyweight squats', durationSec: 15 },
+    { name: 'Arm circles', durationSec: 15 },
+  ],
 }

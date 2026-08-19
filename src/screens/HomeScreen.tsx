@@ -1,17 +1,51 @@
-import { estimateSessionSeconds, formatMinutes, sessionMinutes } from '../timeline.ts'
-import { displayTitle, levelLabel } from '../loadWorkouts.ts'
-import type { Program, ScheduleRow, Session, SessionMode } from '../types.ts'
+import {
+  canPlayEmom,
+  effectiveType,
+  estimateSessionSeconds,
+  exerciseLine,
+  formatMinutes,
+  workoutTypeLabel,
+} from '../timeline.ts'
+import { displayTitle } from '../loadWorkouts.ts'
+import {
+  MONTH_WEEKS,
+  canAdvanceMonth,
+  monthLabel,
+  programEyebrow,
+  weeksCompleted,
+} from '../programs.ts'
+import type {
+  Program,
+  ProgramPhase,
+  ProgramProgress,
+  ScheduleRow,
+  Session,
+  SessionMode,
+} from '../types.ts'
 
 type Props = {
   program: Program
-  previous?: Program
+  progress: ProgramProgress
   includeWarmup: boolean
   mode: SessionMode
   doneSessionIds: string[]
+  canEdit?: boolean
   onToggleWarmup: () => void
   onModeChange: (mode: SessionMode) => void
   onBack: () => void
   onStart: (session: Session) => void
+  onProceed?: () => void
+  onEdit?: () => void
+}
+
+function viewForPhase(program: Program, phase: ProgramPhase): Program {
+  return {
+    ...program,
+    stage: phase.name,
+    focus: phase.focus,
+    schedule: phase.schedule,
+    sessions: phase.sessions,
+  }
 }
 
 type WeekStatus = 'done' | 'today' | 'upcoming' | 'available'
@@ -137,15 +171,15 @@ function SessionCard({
     includeWarmup,
     mode,
   )
+  const type = effectiveType(session, mode)
   return (
     <article className={featured ? 'session-card is-current' : 'session-card'}>
       <header>
         <div>
           <h2>{session.name}</h2>
           <p className="session-meta">
-            {mode === 'emom' ? 'EMOM · ' : ''}
-            {session.rounds} rounds · {session.exercises.length} moves ·{' '}
-            {formatMinutes(seconds)}
+            {workoutTypeLabel(type)} · {session.rounds} rounds ·{' '}
+            {session.exercises.length} moves · {formatMinutes(seconds)}
           </p>
         </div>
       </header>
@@ -153,19 +187,7 @@ function SessionCard({
         {session.exercises.map((exercise) => (
           <li key={exercise.name}>
             <strong>{exercise.name}</strong>
-            <span>
-              {mode === 'emom'
-                ? [
-                    exercise.reps ? `${exercise.reps} reps` : exercise.target,
-                    'On the minute',
-                    exercise.bell,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
-                : `${exercise.workSec}s work · ${exercise.restSec}s rest${
-                    exercise.bell ? ` · ${exercise.bell}` : ''
-                  }`}
-            </span>
+            <span>{exerciseLine(session, exercise, mode)}</span>
           </li>
         ))}
       </ol>
@@ -182,58 +204,117 @@ function SessionCard({
 
 export function ProgramScreen({
   program,
-  previous,
+  progress,
   includeWarmup,
   mode,
   doneSessionIds,
+  canEdit,
   onToggleWarmup,
   onModeChange,
   onBack,
   onStart,
+  onProceed,
+  onEdit,
 }: Props) {
+  const phases = program.phases ?? []
+  const month = phases.some((phase) => phase.month === progress.currentMonth)
+    ? progress.currentMonth
+    : (phases[0]?.month ?? 1)
+  const phase = phases.find((item) => item.month === month) ?? phases[0]
+  const view = phase ? viewForPhase(program, phase) : program
   const doneIds = new Set(doneSessionIds)
-  const nextName = nextWorkoutName(program, doneIds)
-  const todayRow = todaysRow(program)
-  const featured = todayRow ? sessionForRow(program, todayRow) : undefined
+  const nextName = nextWorkoutName(view, doneIds)
+  const todayRow = todaysRow(view)
+  const featured = todayRow ? sessionForRow(view, todayRow) : undefined
   const others = featured
-    ? program.sessions.filter((session) => session.id !== featured.id)
-    : program.sessions
+    ? view.sessions.filter((session) => session.id !== featured.id)
+    : view.sessions
+  const owner =
+    program.ownerName && !program.isBuiltin ? `By ${program.ownerName}.` : ''
+  const multiMonth = phases.length > 1
+  const weeks = phase ? weeksCompleted(phase, progress.completions) : 0
+  const readyToProceed = canAdvanceMonth(program, { ...progress, currentMonth: month })
+  const nextMonth = program.phases.find((item) => item.month === month + 1)
+  const statusLine = [
+    multiMonth ? monthLabel(program, month) : undefined,
+    multiMonth ? phase?.name : undefined,
+    multiMonth ? `${weeks} of ${MONTH_WEEKS} weeks` : undefined,
+    !multiMonth && view.schedule.length ? `${view.schedule.length} days a week` : undefined,
+    owner,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  const showEmomChoice = view.sessions.some(canPlayEmom)
+  const controls = (
+    <>
+      {program.warmup ? (
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={includeWarmup}
+            onChange={onToggleWarmup}
+          />
+          <span className="switch" aria-hidden="true" />
+          {warmupToggleLabel(program.warmup.totalSec)}
+        </label>
+      ) : null}
+      {showEmomChoice ? (
+        <div className="mode-switch" role="radiogroup" aria-label="Workout timing">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={mode === 'regular'}
+            className={mode === 'regular' ? 'is-on' : undefined}
+            onClick={() => onModeChange('regular')}
+          >
+            Regular
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={mode === 'emom'}
+            className={mode === 'emom' ? 'is-on' : undefined}
+            onClick={() => onModeChange('emom')}
+          >
+            EMOM
+          </button>
+        </div>
+      ) : null}
+    </>
+  )
 
   return (
-    <main className="page">
+    <main className="page program">
       <button className="back" type="button" onClick={onBack}>
         All programs
       </button>
-      <p className="eyebrow">
-        {[program.duration, program.difficulty].filter(Boolean).join(' · ') || 'Program'}
-      </p>
+      {canEdit && onEdit ? (
+        <button className="ghost" type="button" onClick={onEdit}>
+          Edit program
+        </button>
+      ) : null}
+      {programEyebrow(program) ? (
+        <p className="eyebrow">{programEyebrow(program)}</p>
+      ) : null}
       <h1>{displayTitle(program)}</h1>
-      <p className="lede">
-        {program.focus
-          ? program.focus
-          : previous
-            ? `Start after a month of ${levelLabel(previous)}.`
-            : 'Start here. Stay for a month, then move up.'}{' '}
-        {program.schedule.length} days a week.
-      </p>
+      {statusLine ? <p className="program-status">{statusLine}</p> : null}
 
-      {program.equipment.length > 0 ? (
-        <ul className="chips">
-          {program.equipment.map((item) => (
-            <li key={item}>{formatEquipment(item)}</li>
-          ))}
-        </ul>
+      {readyToProceed && nextMonth && onProceed ? (
+        <button className="primary proceed" type="button" onClick={onProceed}>
+          Proceed to month {nextMonth.month}
+        </button>
       ) : null}
 
-      {program.schedule.length > 0 ? (
+      {view.schedule.length > 0 ? (
         <section className="week">
           <h2>This week</h2>
           <ol className="week-strip">
-            {weekRows(program).map((row) => {
+            {weekRows(view).map((row) => {
               const session = row.workout
-                ? program.sessions.find((item) => item.name === row.workout)
+                ? view.sessions.find((item) => item.name === row.workout)
                 : undefined
-              const status = rowStatus(
+              const dayStatus = rowStatus(
                 row,
                 Boolean(session && doneIds.has(session.id)),
               )
@@ -241,7 +322,7 @@ export function ProgramScreen({
               const label = [
                 row.day,
                 row.rest ? 'Rest' : row.workout,
-                status ? statusLabel(status) : undefined,
+                dayStatus ? statusLabel(dayStatus) : undefined,
               ]
                 .filter(Boolean)
                 .join(', ')
@@ -251,7 +332,7 @@ export function ProgramScreen({
                   aria-label={label}
                   className={[
                     isToday ? 'today' : undefined,
-                    status === 'done' ? 'is-done' : undefined,
+                    dayStatus === 'done' ? 'is-done' : undefined,
                     row.rest ? 'is-rest' : undefined,
                   ]
                     .filter(Boolean)
@@ -267,8 +348,8 @@ export function ProgramScreen({
                         ? (row.workout ?? '')
                         : shortWorkout(row.workout ?? '')}
                   </strong>
-                  <span className={status ? `status is-${status}` : 'status'}>
-                    {status ? statusLabel(status) : ''}
+                  <span className={dayStatus ? `status is-${dayStatus}` : 'status'}>
+                    {dayStatus ? statusLabel(dayStatus) : ''}
                   </span>
                 </li>
               )
@@ -277,51 +358,23 @@ export function ProgramScreen({
         </section>
       ) : null}
 
-      {program.warmup ? (
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={includeWarmup}
-            onChange={onToggleWarmup}
-          />
-          <span className="switch" aria-hidden="true" />
-          {warmupToggleLabel(program.warmup.totalSec)}
-        </label>
-      ) : null}
+      {controls}
 
-      <div className="mode-switch" role="radiogroup" aria-label="Workout timing">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={mode === 'regular'}
-          className={mode === 'regular' ? 'is-on' : undefined}
-          onClick={() => onModeChange('regular')}
-        >
-          Regular
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={mode === 'emom'}
-          className={mode === 'emom' ? 'is-on' : undefined}
-          onClick={() => onModeChange('emom')}
-        >
-          EMOM
-        </button>
-      </div>
-
-      <section className="sessions">
-        {featured ? (
+      {featured ? (
+        <section className="sessions">
           <SessionCard
             key={featured.id}
             session={featured}
-            program={program}
+            program={view}
             includeWarmup={includeWarmup}
             mode={mode}
             featured
             onStart={onStart}
           />
-        ) : null}
+        </section>
+      ) : null}
+
+      <section className="sessions">
         {featured && others.length > 0 ? (
           <h2 className="sessions-other">Other workouts</h2>
         ) : null}
@@ -329,7 +382,7 @@ export function ProgramScreen({
           <SessionCard
             key={session.id}
             session={session}
-            program={program}
+            program={view}
             includeWarmup={includeWarmup}
             mode={mode}
             featured={!featured && session.name === nextName}
@@ -337,124 +390,145 @@ export function ProgramScreen({
           />
         ))}
       </section>
+
+      {program.equipment.length > 0 ? (
+        <ul className="chips">
+          {program.equipment.map((item) => (
+            <li key={item}>{formatEquipment(item)}</li>
+          ))}
+        </ul>
+      ) : null}
     </main>
   )
 }
 
 export function HomeScreen({
-  programs,
+  beginner,
+  mine,
+  others,
   currentProgram,
-  doneSessionIds,
-  mode,
+  currentMonth,
   onOpen,
-  onStartToday,
   onOpenGlossary,
+  onNewWorkout,
+  onNewProgram,
+  onSignOut,
 }: {
-  programs: Program[]
+  beginner: Program[]
+  mine: Program[]
+  others: Program[]
   currentProgram?: Program
-  doneSessionIds: string[]
-  mode: SessionMode
+  currentMonth?: number
   onOpen: (id: string) => void
-  onStartToday: (session: Session) => void
   onOpenGlossary: () => void
+  onNewWorkout: () => void
+  onNewProgram: () => void
+  onSignOut: () => void
 }) {
-  const today = currentProgram ? todaysRow(currentProgram) : undefined
-  const todaySession = today
-    ? currentProgram?.sessions.find((session) => session.name === today.workout)
-    : undefined
-  const todayDone = Boolean(todaySession && doneSessionIds.includes(todaySession.id))
-  const todayMinutes =
-    currentProgram && todaySession
-      ? formatMinutes(
-          estimateSessionSeconds(todaySession, currentProgram.warmup?.totalSec, true, mode),
-        )
-      : undefined
-  const minutes = programs.flatMap((program) =>
-    program.sessions.map((session) => sessionMinutes(program, session, true)),
-  )
-  const minMinutes = minutes.length ? Math.min(...minutes) : undefined
-  const maxMinutes = minutes.length ? Math.max(...minutes) : undefined
-  const daysAWeek = programs[0]?.schedule.length
-  const summary = [
-    programs.length === 1 ? '1 month' : `${programs.length} months`,
-    daysAWeek ? `${daysAWeek} days/week` : undefined,
-    minMinutes && maxMinutes
-      ? minMinutes === maxMinutes
-        ? `~${minMinutes} min`
-        : `${minMinutes}–${maxMinutes} min`
-      : undefined,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const otherBeginner = beginner.filter((program) => program.id !== currentProgram?.id)
+  const otherMine = mine.filter((program) => program.id !== currentProgram?.id)
+  const currentMeta = currentProgram
+    ? [
+        currentMonth ? monthLabel(currentProgram, currentMonth) : undefined,
+        currentMonth
+          ? currentProgram.phases.find((phase) => phase.month === currentMonth)?.name
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
+
+  const card = (program: Program) => {
+    return (
+      <li key={program.id}>
+        <button type="button" onClick={() => onOpen(program.id)}>
+          {programEyebrow(program) ? (
+            <span className="eyebrow">{programEyebrow(program)}</span>
+          ) : null}
+          <strong>{displayTitle(program)}</strong>
+          {program.focus ? <span className="card-focus">{program.focus}</span> : null}
+          {program.ownerName && !program.isBuiltin ? (
+            <span className="card-focus">By {program.ownerName}</span>
+          ) : null}
+          <span className="card-action">
+            View
+            <span className="chevron" aria-hidden="true" />
+          </span>
+        </button>
+      </li>
+    )
+  }
 
   return (
     <main className="page home">
       <p className="eyebrow">On the bell</p>
       <h1>Kettlebell</h1>
-      <p className="lede">
-        Build strength, conditioning, and confidence—one level at a time.
-      </p>
-      {summary ? <p className="program-meta">{summary}</p> : null}
 
-      {todaySession && !todayDone ? (
-        <button
-          className="primary home-start"
-          type="button"
-          onClick={() => onStartToday(todaySession)}
-        >
-          Start {todaySession.name}
-          {todayMinutes ? ` · ${todayMinutes}` : ''}
-        </button>
+      {currentProgram ? (
+        <section className="current-program">
+          <p className="eyebrow">Current program</p>
+          <h2>{displayTitle(currentProgram)}</h2>
+          {currentMeta ? <p className="current-meta">{currentMeta}</p> : null}
+          <button className="secondary" type="button" onClick={() => onOpen(currentProgram.id)}>
+            Open program
+          </button>
+        </section>
       ) : null}
 
-      {programs.length === 0 ? (
-        <section className="empty">
-          <h2>No workouts yet</h2>
-          <p>
-            Add a markdown file to the <code>workouts/</code> folder. Each file
-            becomes a program in this list.
-          </p>
-        </section>
-      ) : (
-        <>
+      <section>
+        <h2>Your programs</h2>
+        {otherMine.length === 0 && otherBeginner.length === 0 && !currentProgram ? (
+          <p className="lede">You don’t have a program yet. Create one.</p>
+        ) : otherMine.length === 0 && otherBeginner.length === 0 ? (
+          <p className="lede">Your other programs will show up here.</p>
+        ) : (
           <ul className="program-list">
-            {programs.map((program) => {
-              const current = program.id === currentProgram?.id
-              return (
-                <li key={program.id}>
-                  <button
-                    className={current ? 'is-current' : undefined}
-                    type="button"
-                    onClick={() => onOpen(program.id)}
-                  >
-                    <span className="eyebrow">
-                      {[program.duration, program.difficulty].filter(Boolean).join(' · ') ||
-                        'Program'}
-                      {current ? ' · Current' : ''}
-                    </span>
-                    <strong>{displayTitle(program)}</strong>
-                    {program.focus ? (
-                      <span className="card-focus">{program.focus}</span>
-                    ) : null}
-                    <span className="card-action">
-                      View
-                      <span className="chevron" aria-hidden="true" />
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
+            {otherMine.map(card)}
+            {otherBeginner.map(card)}
           </ul>
-          <button className="glossary-card" type="button" onClick={onOpenGlossary}>
-            <span className="eyebrow">Moves</span>
-            <strong>Glossary</strong>
-            <span className="card-action">
-              View
-              <span className="chevron" aria-hidden="true" />
-            </span>
-          </button>
-        </>
-      )}
+        )}
+      </section>
+
+      {others.length > 0 ? (
+        <section>
+          <h2>From others</h2>
+          <ul className="program-list">{others.map(card)}</ul>
+        </section>
+      ) : null}
+
+      <section className="create-block">
+        <h2>Create</h2>
+        <button className="create-card" type="button" onClick={onNewProgram}>
+          <span className="eyebrow">Program</span>
+          <strong>New program</strong>
+          <span className="card-focus">Weekly schedule</span>
+          <span className="card-action">
+            Create
+            <span className="chevron" aria-hidden="true" />
+          </span>
+        </button>
+        <button className="create-card" type="button" onClick={onNewWorkout}>
+          <span className="eyebrow">Workout</span>
+          <strong>New workout</strong>
+          <span className="card-focus">One session</span>
+          <span className="card-action">
+            Create
+            <span className="chevron" aria-hidden="true" />
+          </span>
+        </button>
+      </section>
+
+      <button className="glossary-card" type="button" onClick={onOpenGlossary}>
+        <span className="eyebrow">Moves</span>
+        <strong>Glossary</strong>
+        <span className="card-action">
+          View
+          <span className="chevron" aria-hidden="true" />
+        </span>
+      </button>
+      <button className="ghost sign-out" type="button" onClick={onSignOut}>
+        Sign out
+      </button>
     </main>
   )
 }

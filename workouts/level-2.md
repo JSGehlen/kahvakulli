@@ -1,4 +1,4 @@
-# Level 2 — Kettlebell Program
+# Level 2 — Beginner Month 2
 
 **Equipment**
 

@@ -19,6 +19,16 @@ function playCue(kind: Segment['kind']): void {
   else cueCountdown()
 }
 
+function armSegment(e: Engine, segment: Segment, now: number): void {
+  if (segment.awaitComplete) {
+    e.remainingMs = 0
+    e.endsAt = null
+    return
+  }
+  e.remainingMs = segment.durationSec * 1000
+  e.endsAt = now + e.remainingMs
+}
+
 function engineFromRestore(segments: Segment[], restored?: RestoredTimer): Engine {
   if (!restored) {
     return {
@@ -29,12 +39,13 @@ function engineFromRestore(segments: Segment[], restored?: RestoredTimer): Engin
       emomResting: false,
     }
   }
+  const current = segments[restored.index]
   if (restored.status === 'running') {
     return {
       status: 'running',
       index: restored.index,
       remainingMs: restored.remainingMs,
-      endsAt: performance.now() + restored.remainingMs,
+      endsAt: current?.awaitComplete ? null : performance.now() + restored.remainingMs,
       emomResting: Boolean(restored.emomResting),
     }
   }
@@ -90,8 +101,7 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
     const next = list[nextIndex]
     e.index = nextIndex
     e.emomResting = false
-    e.remainingMs = next.durationSec * 1000
-    e.endsAt = now + e.remainingMs
+    armSegment(e, next, now)
     playCue(next.kind)
     publish()
   }
@@ -115,7 +125,13 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
       }
       e.remainingMs = remainingMs
       const sec = Math.ceil(remainingMs / 1000)
-      if (sec !== lastTickSec.current && sec > 0 && sec <= 3) {
+      const current = segmentsRef.current[e.index]
+      if (
+        sec !== lastTickSec.current &&
+        sec > 0 &&
+        sec <= 3 &&
+        !(current?.hideWorkClock && !e.emomResting)
+      ) {
         lastTickSec.current = sec
         cueCountdown()
       }
@@ -133,22 +149,26 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
     const first = segmentsRef.current[0]
     if (!first) return
     lastTickSec.current = null
-    engine.current = {
+    const e: Engine = {
       status: 'running',
       index: 0,
-      remainingMs: first.durationSec * 1000,
-      endsAt: performance.now() + first.durationSec * 1000,
+      remainingMs: 0,
+      endsAt: null,
       emomResting: false,
     }
+    armSegment(e, first, performance.now())
+    engine.current = e
     playCue(first.kind)
     publish()
   }
 
   const pause = () => {
     const e = engine.current
-    if (e.status !== 'running' || e.endsAt === null) return
-    e.remainingMs = Math.max(0, e.endsAt - performance.now())
-    e.endsAt = null
+    if (e.status !== 'running') return
+    if (e.endsAt !== null) {
+      e.remainingMs = Math.max(0, e.endsAt - performance.now())
+      e.endsAt = null
+    }
     e.status = 'paused'
     publish()
   }
@@ -157,7 +177,10 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
     const e = engine.current
     if (e.status !== 'paused') return
     e.status = 'running'
-    e.endsAt = performance.now() + e.remainingMs
+    const current = segmentsRef.current[e.index]
+    if (!current?.awaitComplete) {
+      e.endsAt = performance.now() + e.remainingMs
+    }
     publish()
   }
 
@@ -173,7 +196,12 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
 
   const complete = () => {
     const e = engine.current
+    const current = segmentsRef.current[e.index]
     if (e.status === 'idle' || e.status === 'done' || e.emomResting) return
+    if (current?.awaitComplete) {
+      advanceLocked(performance.now())
+      return
+    }
     e.emomResting = true
     if (e.status === 'paused' && e.remainingMs > 0) {
       e.status = 'running'
@@ -184,9 +212,10 @@ export function useSession(segments: Segment[], restored?: RestoredTimer) {
   }
 
   const segment = segments[view.index]
-  const progress = segment
-    ? Math.min(1, Math.max(0, 1 - view.remainingMs / (segment.durationSec * 1000)))
-    : 0
+  const progress =
+    segment && segment.durationSec > 0
+      ? Math.min(1, Math.max(0, 1 - view.remainingMs / (segment.durationSec * 1000)))
+      : 0
 
   return {
     status: view.status,

@@ -1,4 +1,4 @@
-# Level 3 — Kettlebell Program
+# Level 3 — Beginner Month 3
 
 **Equipment**
 

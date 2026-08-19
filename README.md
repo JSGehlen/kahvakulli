@@ -1,84 +1,38 @@
 # Kettlebell
 
-A mobile-first workout timer. Drop a markdown file into `workouts/` and it becomes a program in the app.
+A mobile-first workout timer. The Beginner 3-month track ships with the app. Signed-in people can also build workouts and programs from the shared glossary.
 
 ```bash
 npm install
+cp .env.example .env.local
+```
+
+Fill in from the Supabase project **API Keys** tab:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_...`) — safe for the browser; this replaced the old `anon` key. See [API keys](https://supabase.com/docs/guides/getting-started/api-keys).
+
+Then in the SQL editor:
+
+1. Run [`supabase/schema.sql`](supabase/schema.sql)
+2. Run `npm run seed` and paste [`supabase/seed.sql`](supabase/seed.sql)
+3. Sign up in the app, then make yourself admin:
+
+```sql
+update public.profiles set is_admin = true where id = auth.uid();
+```
+
+```bash
 npm run dev
 ```
 
-On your phone, open the local URL and add it to the home screen. The session screen keeps a large timer, the current move, suggested bell, and the next interval. It beeps on work/rest changes and tries to keep the screen awake.
+On your phone, open the local URL and add it to the home screen.
 
-## Adding a workout
+## What you can do
 
-Create `workouts/my-program.md`. The parser is built around this shape:
+- Train the Beginner months (Fundamentals, Power & Conditioning, Complexes & Intensity).
+- Add glossary moves if you are an admin — one shared catalog for everyone.
+- Create workouts from those moves, then assemble them into a program with a weekly schedule.
+- Publish a program so anyone signed in can start it. Progress stays per person.
 
-```markdown
-# Level 2 — Kettlebell Program
-
-Equipment
-
-* 1 × 16 kg kettlebell
-
-Month: 1
-Difficulty: Beginner
-Focus: Two-hand squat, press, and row.
-
-Weekly Schedule
-
-Day	Workout
-Monday	Workout A
-Friday	Workout B
-
----
-
-Warm-Up
-
-Repeat for 3–5 minutes:
-
-1. March or jog on the spot — 30 seconds
-2. Arm circles — 15 seconds
-
----
-
-Workout A
-
-Repeat 3×
-
-1. Goblet Squats
-    * Work: 30 seconds
-    * Rest: 45 seconds
-    * Suggested bell: 16 kg
-2. Kettlebell Row
-    * Work: 30 seconds
-    * Rest: 45 seconds
-    * Suggested bell: 16 kg
-
----
-
-Exercise Glossary
-
-Goblet Squat
-
-1. Hold the kettlebell at chest height.
-2. Sit your hips back and down.
-
----
-
-Quick Weight Reference
-
-Exercise	Suggested Bell
-Goblet Squat	16 kg
-```
-
-Rules that matter:
-
-- The first heading or first line is the program title.
-- `Month:`, `Difficulty:`, `Name:`, and `Focus:` show on the home-screen cards.
-- `Workout A`, `Workout B`, and any other `Workout …` block becomes a startable session.
-- `Work:` and `Rest:` lines become the timer. `Suggested bell:` shows under the exercise name.
-- `Repeat 3×` is the number of rounds.
-- Glossary names are matched fuzzily, so `Goblet Squats` still finds `Goblet Squat`.
-- `##` headings are optional. `---` dividers are optional.
-
-Level 1 from the original program already lives in `workouts/level-1.md`.
+Markdown in `workouts/` is only the seed source for the Beginner track. Runtime data lives in Supabase.

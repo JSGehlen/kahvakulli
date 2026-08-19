@@ -1,28 +1,76 @@
 import { matchGlossary } from './parseWorkout.ts'
-import type { Exercise, Program, Segment, Session, SessionMode } from './types.ts'
+import type { Exercise, Program, Segment, Session, SessionMode, WorkoutType } from './types.ts'
 
-export function intervalFor(exercise: Exercise, mode: SessionMode) {
-  if (mode === 'emom') {
-    return { workSec: 60, restSec: 0 }
+export function workoutTypeLabel(type: WorkoutType): string {
+  if (type === 'emom') return 'EMOM'
+  if (type === 'circuit') return 'Circuit'
+  return 'Regular'
+}
+
+export function usesReps(exercise: Exercise): boolean {
+  return Boolean(exercise.reps) && !(exercise.workSec > 0)
+}
+
+export function canPlayEmom(session: Session): boolean {
+  return session.type === 'regular'
+}
+
+export function effectiveType(
+  session: Session,
+  playAs: SessionMode = 'regular',
+): WorkoutType {
+  if (session.type === 'circuit' || session.type === 'emom') return session.type
+  if (playAs === 'emom' && canPlayEmom(session)) return 'emom'
+  return 'regular'
+}
+
+export function exerciseLine(
+  session: Session,
+  exercise: Exercise,
+  playAs: SessionMode = 'regular',
+): string {
+  const type = effectiveType(session, playAs)
+  if (type === 'emom') {
+    return [exercise.reps ? `${exercise.reps} reps` : exercise.target, 'On the minute', exercise.bell]
+      .filter(Boolean)
+      .join(' · ')
   }
-  return { workSec: exercise.workSec, restSec: exercise.restSec }
+  if (type === 'circuit' || usesReps(exercise)) {
+    return [exercise.reps ? `${exercise.reps} reps` : exercise.target, exercise.bell]
+      .filter(Boolean)
+      .join(' · ')
+  }
+  return [`${exercise.workSec}s work`, `${exercise.restSec}s rest`, exercise.target, exercise.bell]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export function estimateSessionSeconds(
   session: Session,
   warmupSec = 0,
   includeWarmup = false,
-  mode: SessionMode = 'regular',
+  playAs: SessionMode = 'regular',
 ): number {
   let total = includeWarmup ? warmupSec : 0
   total += 5
+  const lastRest = session.exercises.at(-1)?.restSec ?? 0
+  const type = effectiveType(session, playAs)
+
+  if (type === 'emom') {
+    return total + session.rounds * session.exercises.length * 60
+  }
+
   for (let round = 1; round <= session.rounds; round += 1) {
     session.exercises.forEach((exercise, index) => {
-      const { workSec, restSec } = intervalFor(exercise, mode)
-      total += workSec
       const last =
         round === session.rounds && index === session.exercises.length - 1
-      if (!last) total += Math.max(restSec, 0)
+      if (type === 'circuit') {
+        const lastOfRound = index === session.exercises.length - 1
+        if (lastOfRound && !last) total += Math.max(lastRest, 0)
+        return
+      }
+      if (!usesReps(exercise)) total += exercise.workSec
+      if (!last) total += Math.max(exercise.restSec, 0)
     })
   }
   return total
@@ -44,12 +92,12 @@ export function sessionMinutes(
   program: Program,
   session: Session,
   includeWarmup = true,
-  mode: SessionMode = 'regular',
+  playAs: SessionMode = 'regular',
 ): number {
   return Math.max(
     1,
     Math.round(
-      estimateSessionSeconds(session, program.warmup?.totalSec, includeWarmup, mode) / 60,
+      estimateSessionSeconds(session, program.warmup?.totalSec, includeWarmup, playAs) / 60,
     ),
   )
 }
@@ -59,15 +107,46 @@ export function formatWarmupMeta(totalSec: number): string {
   return `Repeats for ${minutes} min`
 }
 
+function baseWork(
+  exercise: Exercise,
+  program: Program,
+  round: number,
+  rounds: number,
+  index: number,
+  totalExercises: number,
+  subtitle: string,
+  nextTitle: string | undefined,
+  extra: Partial<Segment>,
+): Segment {
+  const glossary = matchGlossary(exercise.name, program.glossary)
+  return {
+    kind: 'work',
+    title: exercise.name,
+    subtitle,
+    durationSec: extra.durationSec ?? exercise.workSec,
+    round,
+    totalRounds: rounds,
+    exerciseIndex: index + 1,
+    totalExercises,
+    bell: exercise.bell,
+    reps: exercise.reps,
+    target: exercise.target,
+    nextTitle,
+    glossaryName: glossary?.name ?? exercise.name,
+    ...extra,
+  }
+}
+
 export function buildTimeline(
   program: Program,
   session: Session,
   includeWarmup: boolean,
-  mode: SessionMode = 'regular',
+  playAs: SessionMode = 'regular',
 ): Segment[] {
   const segments: Segment[] = []
-
   const first = session.exercises[0]
+  const type = effectiveType(session, playAs)
+  const totalExercises = session.exercises.length
 
   if (includeWarmup && program.warmup) {
     const { warmup } = program
@@ -93,19 +172,21 @@ export function buildTimeline(
     segments.push({
       kind: 'prepare',
       title: first.name,
-      subtitle: `Round 1/${session.rounds} · Move 1/${session.exercises.length}`,
+      subtitle: `Round 1/${session.rounds} · Move 1/${totalExercises}`,
       durationSec: 5,
       round: 1,
       totalRounds: session.rounds,
       exerciseIndex: 1,
-      totalExercises: session.exercises.length,
-          bell: first.bell,
-          reps: first.reps,
-          target: first.target,
-          nextTitle: first.name,
+      totalExercises,
+      bell: first.bell,
+      reps: first.reps,
+      target: first.target,
+      nextTitle: first.name,
       glossaryName: first.name,
     })
   }
+
+  const lastRest = session.exercises.at(-1)?.restSec ?? 0
 
   for (let round = 1; round <= session.rounds; round += 1) {
     session.exercises.forEach((exercise, index) => {
@@ -114,60 +195,90 @@ export function buildTimeline(
         (round < session.rounds ? session.exercises[0] : undefined)
       const last =
         round === session.rounds && index === session.exercises.length - 1
-      const glossary = matchGlossary(exercise.name, program.glossary)
-      const minute =
-        (round - 1) * session.exercises.length + index + 1
-      const totalMinutes = session.rounds * session.exercises.length
+      const lastOfRound = index === session.exercises.length - 1
+      const subtitle = `Round ${round}/${session.rounds} · Move ${index + 1}/${totalExercises}`
 
-      if (mode === 'emom') {
-        segments.push({
-          kind: 'work',
-          title: exercise.name,
-          subtitle: `Minute ${minute}/${totalMinutes} · Round ${round}/${session.rounds}`,
-          durationSec: 60,
-          round,
-          totalRounds: session.rounds,
-          exerciseIndex: index + 1,
-          totalExercises: session.exercises.length,
-          bell: exercise.bell,
-          reps: exercise.reps,
-          target: exercise.target,
-          nextTitle: last ? undefined : nextExercise?.name,
-          glossaryName: glossary?.name ?? exercise.name,
-        })
+      if (type === 'emom') {
+        const minute = (round - 1) * totalExercises + index + 1
+        const totalMinutes = session.rounds * totalExercises
+        segments.push(
+          baseWork(
+            exercise,
+            program,
+            round,
+            session.rounds,
+            index,
+            totalExercises,
+            `Minute ${minute}/${totalMinutes} · Round ${round}/${session.rounds}`,
+            last ? undefined : nextExercise?.name,
+            { durationSec: 60, hideWorkClock: true },
+          ),
+        )
         return
       }
 
-      const { workSec, restSec } = intervalFor(exercise, mode)
+      if (type === 'circuit') {
+        segments.push(
+          baseWork(
+            exercise,
+            program,
+            round,
+            session.rounds,
+            index,
+            totalExercises,
+            subtitle,
+            last
+              ? undefined
+              : lastOfRound
+                ? `Rest ${lastRest}s`
+                : nextExercise?.name,
+            { durationSec: 0, awaitComplete: true },
+          ),
+        )
+        if (lastOfRound && !last && lastRest > 0) {
+          segments.push({
+            kind: 'rest',
+            title: 'Breathe',
+            subtitle: `Round ${round}/${session.rounds}`,
+            durationSec: Math.max(lastRest, 0),
+            round,
+            totalRounds: session.rounds,
+            nextTitle: session.exercises[0]?.name,
+            glossaryName: session.exercises[0]?.name,
+          })
+        }
+        return
+      }
 
-      segments.push({
-        kind: 'work',
-        title: exercise.name,
-        subtitle: `Round ${round}/${session.rounds} · Move ${index + 1}/${session.exercises.length}`,
-        durationSec: workSec,
-        round,
-        totalRounds: session.rounds,
-        exerciseIndex: index + 1,
-        totalExercises: session.exercises.length,
-        bell: exercise.bell,
-        reps: exercise.reps,
-        target: exercise.target,
-        nextTitle: last ? undefined : `Rest ${restSec}s`,
-        glossaryName: glossary?.name ?? exercise.name,
-      })
+      const timed = !usesReps(exercise)
+      const restSec = exercise.restSec
+      segments.push(
+        baseWork(
+          exercise,
+          program,
+          round,
+          session.rounds,
+          index,
+          totalExercises,
+          subtitle,
+          last ? undefined : timed || restSec > 0 ? `Rest ${restSec}s` : nextExercise?.name,
+          timed
+            ? { durationSec: exercise.workSec }
+            : { durationSec: 0, awaitComplete: true },
+        ),
+      )
 
-      if (!last) {
-        const nextName = nextExercise?.name ?? 'Next'
+      if (!last && restSec > 0) {
         segments.push({
           kind: 'rest',
           title: 'Breathe',
-          subtitle: `Round ${round}/${session.rounds} · Move ${index + 1}/${session.exercises.length}`,
+          subtitle,
           durationSec: Math.max(restSec, 0),
           round,
           totalRounds: session.rounds,
           exerciseIndex: index + 1,
-          totalExercises: session.exercises.length,
-          nextTitle: nextName,
+          totalExercises,
+          nextTitle: nextExercise?.name ?? 'Next',
           glossaryName: nextExercise?.name,
         })
       }

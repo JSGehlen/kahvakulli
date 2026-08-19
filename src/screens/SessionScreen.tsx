@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { matchGlossaryEntries } from '../parseWorkout.ts'
 import type { RestoredTimer } from '../persist.ts'
 import { formatClock } from '../timeline.ts'
-import type { GlossaryEntry, Segment, SessionMode } from '../types.ts'
+import type { GlossaryEntry, Segment, WorkoutType } from '../types.ts'
 import { useSession } from '../useSession.ts'
 
 type Props = {
   title: string
   sessionName: string
-  mode: SessionMode
+  workoutType: WorkoutType
   segments: Segment[]
   glossary: GlossaryEntry[]
   restored?: RestoredTimer
@@ -27,7 +27,7 @@ const phaseLabel: Record<Segment['kind'], string> = {
 export function SessionScreen({
   title,
   sessionName,
-  mode,
+  workoutType,
   segments,
   glossary,
   restored,
@@ -36,12 +36,7 @@ export function SessionScreen({
   onDone,
 }: Props) {
   const session = useSession(segments, restored)
-  const [minuteComplete, setMinuteComplete] = useState(false)
   const [sheet, setSheet] = useState<GlossaryEntry[] | null>(null)
-
-  useEffect(() => {
-    setMinuteComplete(false)
-  }, [session.index])
   const pausedByForm = useRef(false)
   const persistRef = useRef(onPersist)
   const snapshotRef = useRef({
@@ -66,6 +61,7 @@ export function SessionScreen({
         index: snap.index,
         remainingMs: snap.remainingMs,
         status: snap.status,
+        emomResting: snap.emomResting,
       })
     }
     flush()
@@ -87,6 +83,7 @@ export function SessionScreen({
       index: snap.index,
       remainingMs: snap.remainingMs,
       status: snap.status,
+      emomResting: snap.emomResting,
     })
   }, [session.status, session.index, session.emomResting])
 
@@ -147,25 +144,32 @@ export function SessionScreen({
 
   const remaining = formatClock(session.remainingMs / 1000)
   const overall = segments.length === 0 ? 0 : (session.index + session.progress) / segments.length
-  const emomResting = mode === 'emom' && (session.emomResting || minuteComplete)
+  const awaiting = Boolean(segment.awaitComplete)
+  const emomResting = workoutType === 'emom' && session.emomResting
   const kind = emomResting ? 'rest' : segment.kind
-  const prescription = segment.reps
-    ? `${segment.reps} reps`
-    : segment.target
+  const hideWorkClock =
+    kind === 'work' && (awaiting || Boolean(segment.hideWorkClock))
   const dialTitle = emomResting ? 'Breathe' : segment.title
   const dialDetail = emomResting
     ? undefined
-    : [prescription, segment.bell].filter(Boolean).join(' · ') || undefined
-  const showComplete = mode === 'emom' && segment.kind === 'work' && !emomResting
+    : hideWorkClock
+      ? [segment.reps ? 'reps' : segment.target, segment.bell].filter(Boolean).join(' · ') ||
+        undefined
+      : [segment.reps ? `${segment.reps} reps` : segment.target, segment.bell]
+          .filter(Boolean)
+          .join(' · ') || undefined
+  const showComplete =
+    (workoutType === 'emom' && segment.kind === 'work' && !emomResting) ||
+    (awaiting && kind === 'work')
+  const ringProgress = hideWorkClock ? 0 : session.progress
 
-  const finishMinute = () => {
-    setMinuteComplete(true)
+  const finishWork = () => {
     session.complete()
   }
 
   return (
     <main
-      className={`session session-${kind}${mode === 'emom' ? ' is-emom' : ''}`}
+      className={`session session-${kind}${workoutType === 'emom' ? ' is-emom' : ''}`}
     >
       <header className="session-top">
         <button className="ghost" type="button" onClick={onExit}>
@@ -186,17 +190,25 @@ export function SessionScreen({
       </header>
 
       <p className="phase">
-        {kind === 'work' && mode === 'emom'
+        {kind === 'work' && workoutType === 'emom'
           ? 'EMOM'
-          : phaseLabel[kind]}
+          : awaiting && kind === 'work'
+            ? ''
+            : phaseLabel[kind]}
       </p>
 
       <div
         className="dial"
-        style={{ ['--progress' as string]: `${Math.round((1 - session.progress) * 100)}%` }}
+        style={{ ['--progress' as string]: `${Math.round((1 - ringProgress) * 100)}%` }}
       >
         <div className="dial-face">
-          <p className="clock">{remaining}</p>
+          <p className="clock">
+            {hideWorkClock
+              ? segment.reps
+                ? `${segment.reps}`
+                : '—'
+              : remaining}
+          </p>
           <h1>{dialTitle}</h1>
           {dialDetail ? <p className="bell">{dialDetail}</p> : null}
         </div>
@@ -221,7 +233,7 @@ export function SessionScreen({
 
       <div className="session-actions">
         {showComplete ? (
-          <button className="complete-btn" type="button" onClick={finishMinute}>
+          <button className="complete-btn" type="button" onClick={finishWork}>
             Complete
           </button>
         ) : null}
