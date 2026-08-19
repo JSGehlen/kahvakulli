@@ -12,6 +12,8 @@
   --prepare: #f3eee4;
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left: env(safe-area-inset-left);
+  --safe-right: env(safe-area-inset-right);
   color: var(--ink);
   background: var(--bg);
   font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
@@ -57,7 +59,7 @@ code {
   width: min(430px, 100%);
   margin: 0 auto;
   min-height: 100dvh;
-  padding: calc(36px + var(--safe-top)) 20px calc(40px + var(--safe-bottom));
+  padding: calc(36px + var(--safe-top)) calc(20px + var(--safe-right)) calc(40px + var(--safe-bottom)) calc(20px + var(--safe-left));
 }
 
 .page.home {
@@ -1091,16 +1093,139 @@ h2 {
   }
 }
 
-@media (min-width: 800px) {
-  body {
-    background: #080907;
-  }
-
+@media (min-width: 768px) {
   .page,
   .session,
   .done {
+    width: min(720px, 100%);
     border-left: 1px solid var(--line);
     border-right: 1px solid var(--line);
     background: var(--bg);
+  }
+
+  .page.home {
+    width: min(760px, 100%);
+  }
+
+  .page.home .create-block {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .page.home .create-block h2 {
+    grid-column: 1 / -1;
+  }
+
+  .page.program .sessions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .page.program .sessions:has(.session-card.is-current:only-child) {
+    grid-template-columns: 1fr;
+  }
+
+  .sessions-other {
+    grid-column: 1 / -1;
+  }
+
+  .primary.start-program {
+    max-width: 280px;
+  }
+
+  .dial {
+    width: min(52vw, 380px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .page,
+  .session,
+  .done {
+    width: min(860px, 100%);
+  }
+
+  .page.home {
+    width: min(900px, 100%);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .page,
+  .session,
+  .done {
+    width: min(100%, 920px);
+    padding: calc(16px + var(--safe-top)) calc(20px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(20px + var(--safe-left));
+  }
+
+  .session {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+    column-gap: 28px;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .session-top {
+    grid-column: 1 / -1;
+  }
+
+  .phase {
+    margin: 8px 0 10px;
+  }
+
+  .dial {
+    width: min(46vh, 260px);
+  }
+
+  .clock {
+    font-size: clamp(3.2rem, 14vh, 5.4rem);
+  }
+
+  .meta,
+  .next {
+    margin-top: 8px;
+  }
+
+  .overall {
+    grid-column: 1 / -1;
+    margin: 10px 0 0;
+  }
+
+  .session-actions {
+    grid-column: 2;
+    grid-row: 2 / 7;
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 768px) and (orientation: landscape) {
+  .session {
+    width: min(960px, 100%);
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(240px, 320px);
+    column-gap: 36px;
+  }
+
+  .session-top {
+    grid-column: 1 / -1;
+  }
+
+  .dial {
+    width: min(48vh, 340px);
+  }
+
+  .overall {
+    grid-column: 1 / -1;
+  }
+
+  .session-actions {
+    grid-column: 2;
+    grid-row: 2 / 7;
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 }
