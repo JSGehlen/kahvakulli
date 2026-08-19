@@ -452,7 +452,7 @@ export async function loadProgramProgress(
   const client = requireClient()
   const { data, error } = await client
     .from('program_progress')
-    .select('program_id, current_month, completions')
+    .select('program_id, current_month, completions, started_at')
     .eq('user_id', userId)
   if (error) throw error
   const byProgram: Record<string, ProgramProgress> = {}
@@ -460,6 +460,7 @@ export async function loadProgramProgress(
     byProgram[row.program_id] = {
       currentMonth: Math.max(1, Number(row.current_month) || 1),
       completions: toCompletions(row.completions),
+      startedAt: row.started_at ?? undefined,
     }
   }
   return byProgram
@@ -486,7 +487,7 @@ export async function markWorkoutDone(
 
   const { data: progressRow, error: progressError } = await client
     .from('program_progress')
-    .select('current_month, completions')
+    .select('current_month, completions, started_at')
     .eq('user_id', userId)
     .eq('program_id', programId)
     .maybeSingle()
@@ -502,6 +503,7 @@ export async function markWorkoutDone(
     program_id: programId,
     current_month: currentMonth,
     completions,
+    started_at: progressRow?.started_at ?? new Date().toISOString(),
     updated_at: new Date().toISOString(),
   })
   if (upsertError) throw upsertError
@@ -513,6 +515,47 @@ export async function markWorkoutDone(
   }
 }
 
+export async function startProgram(
+  userId: string,
+  programId: string,
+): Promise<Record<string, ProgramProgress>> {
+  const client = requireClient()
+  const now = new Date().toISOString()
+  const { error } = await client.from('program_progress').upsert({
+    user_id: userId,
+    program_id: programId,
+    current_month: 1,
+    completions: {},
+    started_at: now,
+    updated_at: now,
+  })
+  if (error) throw error
+  return loadProgramProgress(userId)
+}
+
+export async function endProgram(
+  userId: string,
+  programId: string,
+): Promise<{ week: WeekProgress; programs: Record<string, ProgramProgress> }> {
+  const client = requireClient()
+  const { error: progressError } = await client
+    .from('program_progress')
+    .delete()
+    .eq('user_id', userId)
+    .eq('program_id', programId)
+  if (progressError) throw progressError
+  const { error: weekError } = await client
+    .from('week_progress')
+    .delete()
+    .eq('user_id', userId)
+    .eq('program_id', programId)
+  if (weekError) throw weekError
+  return {
+    week: await loadWeekProgress(userId),
+    programs: await loadProgramProgress(userId),
+  }
+}
+
 export async function advanceProgramMonth(
   userId: string,
   programId: string,
@@ -520,11 +563,19 @@ export async function advanceProgramMonth(
 ): Promise<Record<string, ProgramProgress>> {
   const client = requireClient()
   const weekStart = mondayKey()
+  const { data: progressRow, error: readError } = await client
+    .from('program_progress')
+    .select('started_at')
+    .eq('user_id', userId)
+    .eq('program_id', programId)
+    .maybeSingle()
+  if (readError) throw readError
   const { error } = await client.from('program_progress').upsert({
     user_id: userId,
     program_id: programId,
     current_month: nextMonth,
     completions: {},
+    started_at: progressRow?.started_at ?? new Date().toISOString(),
     updated_at: new Date().toISOString(),
   })
   if (error) throw error

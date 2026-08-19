@@ -27,6 +27,27 @@ export function weeksCompleted(phase: ProgramPhase, completions: Record<string, 
   return Math.min(...phase.sessions.map((session) => completions[session.id] ?? 0))
 }
 
+export function isStarted(progress: ProgramProgress): boolean {
+  return Boolean(progress.startedAt)
+}
+
+export function currentWeek(phase: ProgramPhase, completions: Record<string, number>): number {
+  return Math.min(MONTH_WEEKS, weeksCompleted(phase, completions) + 1)
+}
+
+export function leftoverLine(program: Program, progress: ProgramProgress): string {
+  if (program.phases.length < 2) {
+    return "Are you sure you want to end early? You have this week's sessions left of this program."
+  }
+  const month = progress.currentMonth
+  const phase = program.phases.find((item) => item.month === month)
+  const week = phase ? currentWeek(phase, progress.completions) : 1
+  const monthsLeft = Math.max(0, program.phases.length - month)
+  const weeksLeft = MONTH_WEEKS - week + monthsLeft * MONTH_WEEKS
+  const amount = `${weeksLeft} ${weeksLeft === 1 ? 'week' : 'weeks'}`
+  return `Are you sure you want to end early? You have ${amount} left of this program.`
+}
+
 export function canAdvanceMonth(program: Program, progress: ProgramProgress): boolean {
   if (program.phases.length < 2) return false
   const current = program.phases.find((phase) => phase.month === progress.currentMonth)

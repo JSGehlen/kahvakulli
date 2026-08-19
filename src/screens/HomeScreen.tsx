@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import {
   canPlayEmom,
   effectiveType,
@@ -8,11 +9,12 @@ import {
 } from '../timeline.ts'
 import { displayTitle } from '../loadWorkouts.ts'
 import {
-  MONTH_WEEKS,
   canAdvanceMonth,
+  currentWeek,
+  isStarted,
+  leftoverLine,
   monthLabel,
   programEyebrow,
-  weeksCompleted,
 } from '../programs.ts'
 import type {
   Program,
@@ -34,6 +36,8 @@ type Props = {
   onModeChange: (mode: SessionMode) => void
   onBack: () => void
   onStart: (session: Session) => void
+  onStartProgram: () => void
+  onEndProgram: () => void
   onProceed?: () => void
   onEdit?: () => void
 }
@@ -156,6 +160,7 @@ function SessionCard({
   includeWarmup,
   mode,
   featured,
+  canStart,
   onStart,
 }: {
   session: Session
@@ -163,6 +168,7 @@ function SessionCard({
   includeWarmup: boolean
   mode: SessionMode
   featured: boolean
+  canStart: boolean
   onStart: (session: Session) => void
 }) {
   const seconds = estimateSessionSeconds(
@@ -191,14 +197,58 @@ function SessionCard({
           </li>
         ))}
       </ol>
-      <button
-        className={featured ? 'primary' : 'secondary'}
-        type="button"
-        onClick={() => onStart(session)}
-      >
-        Start {session.name}
-      </button>
+      {canStart ? (
+        <button
+          className={featured ? 'primary' : 'secondary'}
+          type="button"
+          onClick={() => onStart(session)}
+        >
+          Start {session.name}
+        </button>
+      ) : null}
     </article>
+  )
+}
+
+function EndProgramDialog({
+  open,
+  leftover,
+  onEnd,
+  onCancel,
+}: {
+  open: boolean
+  leftover: string
+  onEnd: () => void
+  onCancel: () => void
+}) {
+  const ref = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    if (open && !node.open) node.showModal()
+    if (!open && node.open) node.close()
+  }, [open])
+
+  return (
+    <dialog
+      ref={ref}
+      className="confirm"
+      aria-labelledby="end-program-title"
+      onCancel={(event) => {
+        event.preventDefault()
+        onCancel()
+      }}
+    >
+      <h2 id="end-program-title">End program</h2>
+      <p>{leftover}</p>
+      <button className="primary" type="button" onClick={onEnd}>
+        End
+      </button>
+      <button className="secondary" type="button" onClick={onCancel}>
+        Cancel
+      </button>
+    </dialog>
   )
 }
 
@@ -213,10 +263,14 @@ export function ProgramScreen({
   onModeChange,
   onBack,
   onStart,
+  onStartProgram,
+  onEndProgram,
   onProceed,
   onEdit,
 }: Props) {
+  const [ending, setEnding] = useState(false)
   const phases = program.phases ?? []
+  const started = isStarted(progress)
   const month = phases.some((phase) => phase.month === progress.currentMonth)
     ? progress.currentMonth
     : (phases[0]?.month ?? 1)
@@ -225,25 +279,28 @@ export function ProgramScreen({
   const doneIds = new Set(doneSessionIds)
   const nextName = nextWorkoutName(view, doneIds)
   const todayRow = todaysRow(view)
-  const featured = todayRow ? sessionForRow(view, todayRow) : undefined
+  const featured =
+    started && todayRow ? sessionForRow(view, todayRow) : undefined
   const others = featured
     ? view.sessions.filter((session) => session.id !== featured.id)
     : view.sessions
   const owner =
     program.ownerName && !program.isBuiltin ? `By ${program.ownerName}.` : ''
   const multiMonth = phases.length > 1
-  const weeks = phase ? weeksCompleted(phase, progress.completions) : 0
-  const readyToProceed = canAdvanceMonth(program, { ...progress, currentMonth: month })
+  const week = phase && started ? currentWeek(phase, progress.completions) : 0
+  const readyToProceed =
+    started && canAdvanceMonth(program, { ...progress, currentMonth: month })
   const nextMonth = program.phases.find((item) => item.month === month + 1)
-  const statusLine = [
-    multiMonth ? monthLabel(program, month) : undefined,
-    multiMonth ? phase?.name : undefined,
-    multiMonth ? `${weeks} of ${MONTH_WEEKS} weeks` : undefined,
-    !multiMonth && view.schedule.length ? `${view.schedule.length} days a week` : undefined,
-    owner,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const statusLine = started
+    ? [
+        multiMonth ? monthLabel(program, month) : undefined,
+        multiMonth ? `Week ${week}` : undefined,
+        !multiMonth && view.schedule.length ? `${view.schedule.length} days a week` : undefined,
+        owner,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : owner
 
   const showEmomChoice = view.sessions.some(canPlayEmom)
   const controls = (
@@ -298,15 +355,27 @@ export function ProgramScreen({
         <p className="eyebrow">{programEyebrow(program)}</p>
       ) : null}
       <h1>{displayTitle(program)}</h1>
+      {multiMonth && phase?.name ? <p className="phase-name">{phase.name}</p> : null}
       {statusLine ? <p className="program-status">{statusLine}</p> : null}
+      {program.equipment.length > 0 ? (
+        <p className="equipment-line">
+          Equipment: {program.equipment.map(formatEquipment).join(' · ')}
+        </p>
+      ) : null}
 
-      {readyToProceed && nextMonth && onProceed ? (
+      {started && readyToProceed && nextMonth && onProceed ? (
         <button className="primary proceed" type="button" onClick={onProceed}>
           Proceed to month {nextMonth.month}
         </button>
       ) : null}
 
-      {view.schedule.length > 0 ? (
+      {!started ? (
+        <button className="primary start-program" type="button" onClick={onStartProgram}>
+          Start program
+        </button>
+      ) : null}
+
+      {started && view.schedule.length > 0 ? (
         <section className="week">
           <h2>This week</h2>
           <ol className="week-strip">
@@ -314,10 +383,9 @@ export function ProgramScreen({
               const session = row.workout
                 ? view.sessions.find((item) => item.name === row.workout)
                 : undefined
-              const dayStatus = rowStatus(
-                row,
-                Boolean(session && doneIds.has(session.id)),
-              )
+              const dayStatus = started
+                ? rowStatus(row, Boolean(session && doneIds.has(session.id)))
+                : undefined
               const isToday = row.day.toLowerCase() === weekday.toLowerCase()
               const label = [
                 row.day,
@@ -358,7 +426,7 @@ export function ProgramScreen({
         </section>
       ) : null}
 
-      {controls}
+      {started ? controls : null}
 
       {featured ? (
         <section className="sessions">
@@ -369,6 +437,7 @@ export function ProgramScreen({
             includeWarmup={includeWarmup}
             mode={mode}
             featured
+            canStart={started}
             onStart={onStart}
           />
         </section>
@@ -385,19 +454,28 @@ export function ProgramScreen({
             program={view}
             includeWarmup={includeWarmup}
             mode={mode}
-            featured={!featured && session.name === nextName}
+            featured={started && !featured && session.name === nextName}
+            canStart={started}
             onStart={onStart}
           />
         ))}
       </section>
 
-      {program.equipment.length > 0 ? (
-        <ul className="chips">
-          {program.equipment.map((item) => (
-            <li key={item}>{formatEquipment(item)}</li>
-          ))}
-        </ul>
+      {started ? (
+        <button className="end-workout" type="button" onClick={() => setEnding(true)}>
+          End program
+        </button>
       ) : null}
+
+      <EndProgramDialog
+        open={ending}
+        leftover={leftoverLine(program, { ...progress, currentMonth: month })}
+        onEnd={() => {
+          setEnding(false)
+          onEndProgram()
+        }}
+        onCancel={() => setEnding(false)}
+      />
     </main>
   )
 }
@@ -407,7 +485,7 @@ export function HomeScreen({
   mine,
   others,
   currentProgram,
-  currentMonth,
+  currentProgress,
   onOpen,
   onOpenGlossary,
   onNewWorkout,
@@ -418,7 +496,7 @@ export function HomeScreen({
   mine: Program[]
   others: Program[]
   currentProgram?: Program
-  currentMonth?: number
+  currentProgress?: ProgramProgress
   onOpen: (id: string) => void
   onOpenGlossary: () => void
   onNewWorkout: () => void
@@ -427,16 +505,24 @@ export function HomeScreen({
 }) {
   const otherBeginner = beginner.filter((program) => program.id !== currentProgram?.id)
   const otherMine = mine.filter((program) => program.id !== currentProgram?.id)
-  const currentMeta = currentProgram
-    ? [
-        currentMonth ? monthLabel(currentProgram, currentMonth) : undefined,
-        currentMonth
-          ? currentProgram.phases.find((phase) => phase.month === currentMonth)?.name
-          : undefined,
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : ''
+  const started = currentProgress ? isStarted(currentProgress) : false
+  const currentMonth = currentProgress?.currentMonth ?? 1
+  const currentPhase =
+    currentProgram?.phases.find((phase) => phase.month === currentMonth) ??
+    currentProgram?.phases[0]
+  const week =
+    started && currentPhase && currentProgress
+      ? currentWeek(currentPhase, currentProgress.completions)
+      : undefined
+  const currentMeta =
+    started && currentProgram
+      ? [
+          monthLabel(currentProgram, currentMonth),
+          week ? `Week ${week}` : undefined,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : ''
 
   const card = (program: Program) => {
     return (
@@ -468,6 +554,7 @@ export function HomeScreen({
         <section className="current-program">
           <p className="eyebrow">Current program</p>
           <h2>{displayTitle(currentProgram)}</h2>
+          {currentPhase?.name ? <p className="phase-name">{currentPhase.name}</p> : null}
           {currentMeta ? <p className="current-meta">{currentMeta}</p> : null}
           <button className="secondary" type="button" onClick={() => onOpen(currentProgram.id)}>
             Open program

@@ -3,12 +3,14 @@ import { releaseAudio, unlockAudio } from './audio.ts'
 import { useAuth } from './auth.tsx'
 import {
   advanceProgramMonth,
+  endProgram,
   loadGlossary,
   loadProgramProgress,
   loadPrograms,
   loadWeekProgress,
   loadWorkouts,
   markWorkoutDone,
+  startProgram,
 } from './data.ts'
 import { displayTitle } from './loadWorkouts.ts'
 import {
@@ -266,10 +268,8 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         mine={lists.mine}
         others={lists.others}
         currentProgram={currentProgram}
-        currentMonth={
-          currentProgram
-            ? (programProgress[currentProgram.id]?.currentMonth ?? 1)
-            : undefined
+        currentProgress={
+          currentProgram ? programProgress[currentProgram.id] : undefined
         }
         onOpen={(id) => {
           rememberProgram(id)
@@ -290,10 +290,8 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         mine={lists.mine}
         others={lists.others}
         currentProgram={currentProgram}
-        currentMonth={
-          currentProgram
-            ? (programProgress[currentProgram.id]?.currentMonth ?? 1)
-            : undefined
+        currentProgress={
+          currentProgram ? programProgress[currentProgram.id] : undefined
         }
         onOpen={(id) => {
           rememberProgram(id)
@@ -323,6 +321,18 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         }}
         onBack={() => setRoute({ name: 'home' })}
         onStart={(next) => void startSession(next, program.id)}
+        onStartProgram={() => {
+          rememberProgram(program.id)
+          void startProgram(userId, program.id).then(setProgramProgress)
+        }}
+        onEndProgram={() => {
+          const saved = loadSavedWorkout()
+          if (saved?.programId === program.id) clearSavedWorkout()
+          void endProgram(userId, program.id).then((result) => {
+            setProgramProgress(result.programs)
+            setWeekProgress(result.week)
+          })
+        }}
         onProceed={() => {
           const current = programProgress[program.id]?.currentMonth ?? 1
           void advanceProgramMonth(userId, program.id, current + 1).then((next) => {
@@ -356,6 +366,18 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
           }}
           onBack={() => setRoute({ name: 'home' })}
           onStart={(next) => void startSession(next, program.id)}
+          onStartProgram={() => {
+            rememberProgram(program.id)
+            void startProgram(userId, program.id).then(setProgramProgress)
+          }}
+          onEndProgram={() => {
+            const saved = loadSavedWorkout()
+            if (saved?.programId === program.id) clearSavedWorkout()
+            void endProgram(userId, program.id).then((result) => {
+              setProgramProgress(result.programs)
+              setWeekProgress(result.week)
+            })
+          }}
           onProceed={() => {
             const current = programProgress[program.id]?.currentMonth ?? 1
             void advanceProgramMonth(userId, program.id, current + 1).then((next) => {
