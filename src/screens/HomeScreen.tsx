@@ -160,6 +160,7 @@ function SessionCard({
   includeWarmup,
   mode,
   featured,
+  done,
   canStart,
   onStart,
 }: {
@@ -168,6 +169,7 @@ function SessionCard({
   includeWarmup: boolean
   mode: SessionMode
   featured: boolean
+  done: boolean
   canStart: boolean
   onStart: (session: Session) => void
 }) {
@@ -188,6 +190,7 @@ function SessionCard({
             {session.exercises.length} moves · {formatMinutes(seconds)}
           </p>
         </div>
+        {done ? <span className="badge">Completed</span> : null}
       </header>
       <ol>
         {session.exercises.map((exercise) => (
@@ -203,7 +206,7 @@ function SessionCard({
           type="button"
           onClick={() => onStart(session)}
         >
-          Start {session.name}
+          {done ? 'Start again' : `Start ${session.name}`}
         </button>
       ) : null}
     </article>
@@ -437,6 +440,7 @@ export function ProgramScreen({
             includeWarmup={includeWarmup}
             mode={mode}
             featured
+            done={doneIds.has(featured.id)}
             canStart={started}
             onStart={onStart}
           />
@@ -455,6 +459,7 @@ export function ProgramScreen({
             includeWarmup={includeWarmup}
             mode={mode}
             featured={started && !featured && session.name === nextName}
+            done={doneIds.has(session.id)}
             canStart={started}
             onStart={onStart}
           />

@@ -472,11 +472,12 @@ h2 {
 }
 
 .badge {
+  flex-shrink: 0;
   background: var(--work);
   color: #140800;
   border-radius: 999px;
   padding: 4px 8px;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
