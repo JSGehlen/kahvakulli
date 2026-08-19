@@ -562,19 +562,23 @@ export function HomeScreen({
         </section>
       ) : null}
 
-      <section>
-        <h2>Your programs</h2>
-        {otherMine.length === 0 && otherBeginner.length === 0 && !currentProgram ? (
-          <p className="lede">You don’t have a program yet. Create one.</p>
-        ) : otherMine.length === 0 && otherBeginner.length === 0 ? (
-          <p className="lede">Your other programs will show up here.</p>
-        ) : (
-          <ul className="program-list">
-            {otherMine.map(card)}
-            {otherBeginner.map(card)}
-          </ul>
-        )}
-      </section>
+      {otherBeginner.length > 0 ? (
+        <section>
+          <h2>Programs</h2>
+          <ul className="program-list">{otherBeginner.map(card)}</ul>
+        </section>
+      ) : null}
+
+      {mine.length > 0 ? (
+        <section>
+          <h2>Your programs</h2>
+          {otherMine.length > 0 ? (
+            <ul className="program-list">{otherMine.map(card)}</ul>
+          ) : (
+            <p className="lede">Your other programs will show up here.</p>
+          )}
+        </section>
+      ) : null}
 
       {others.length > 0 ? (
         <section>

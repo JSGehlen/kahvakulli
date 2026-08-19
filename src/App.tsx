@@ -14,6 +14,7 @@ import {
 } from './data.ts'
 import { displayTitle } from './loadWorkouts.ts'
 import {
+  clearLastProgramId,
   clearSavedWorkout,
   emptyWeekProgress,
   loadLastProgramId,
@@ -26,7 +27,7 @@ import {
   type RestoredTimer,
   type WeekProgress,
 } from './persist.ts'
-import { emptyProgramProgress, splitProgramLists } from './programs.ts'
+import { emptyProgramProgress, isStarted, splitProgramLists } from './programs.ts'
 import { AuthScreen } from './screens/AuthScreen.tsx'
 import { GlossaryScreen } from './screens/GlossaryScreen.tsx'
 import { HomeScreen, ProgramScreen } from './screens/HomeScreen.tsx'
@@ -139,8 +140,11 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
   }, [userId])
 
   const lists = useMemo(() => splitProgramLists(programs, userId), [programs, userId])
+  const startedPrograms = programs.filter((item) =>
+    isStarted(programProgress[item.id] ?? emptyProgramProgress()),
+  )
   const currentProgram =
-    programs.find((item) => item.id === lastProgramId) ?? lists.beginner[0] ?? programs[0]
+    startedPrograms.find((item) => item.id === lastProgramId) ?? startedPrograms[0]
 
   const program = programs.find((item) => 'id' in route && item.id === route.id)
   const session =
@@ -328,6 +332,10 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         onEndProgram={() => {
           const saved = loadSavedWorkout()
           if (saved?.programId === program.id) clearSavedWorkout()
+          if (lastProgramId === program.id) {
+            clearLastProgramId()
+            setLastProgramId(null)
+          }
           void endProgram(userId, program.id).then((result) => {
             setProgramProgress(result.programs)
             setWeekProgress(result.week)
@@ -373,6 +381,10 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
           onEndProgram={() => {
             const saved = loadSavedWorkout()
             if (saved?.programId === program.id) clearSavedWorkout()
+            if (lastProgramId === program.id) {
+              clearLastProgramId()
+              setLastProgramId(null)
+            }
             void endProgram(userId, program.id).then((result) => {
               setProgramProgress(result.programs)
               setWeekProgress(result.week)

@@ -64,6 +64,10 @@ code {
   width: min(460px, 100%);
 }
 
+.page.home h1 {
+  margin-bottom: 20px;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: var(--copper);

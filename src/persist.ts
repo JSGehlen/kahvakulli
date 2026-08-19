@@ -69,6 +69,14 @@ export function saveLastProgramId(id: string): void {
   }
 }
 
+export function clearLastProgramId(): void {
+  try {
+    localStorage.removeItem(LAST_PROGRAM_KEY)
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 export function loadSessionMode(): SessionMode {
   try {
     const raw = localStorage.getItem(MODE_KEY)
