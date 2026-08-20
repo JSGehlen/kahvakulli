@@ -145,15 +145,6 @@ function shortWorkout(name: string): string {
   return name.replace(/^workout\s+/i, '').trim() || name
 }
 
-function nextWorkoutName(program: Program, doneIds: Set<string>): string | undefined {
-  return [...program.schedule]
-    .sort((a, b) => weekOrder(a.day) - weekOrder(b.day))
-    .find((row) => {
-      const session = sessionForRow(program, row)
-      return Boolean(session && !doneIds.has(session.id))
-    })?.workout
-}
-
 function SessionCard({
   session,
   program,
@@ -280,7 +271,6 @@ export function ProgramScreen({
   const phase = phases.find((item) => item.month === month) ?? phases[0]
   const view = phase ? viewForPhase(program, phase) : program
   const doneIds = new Set(doneSessionIds)
-  const nextName = nextWorkoutName(view, doneIds)
   const todayRow = todaysRow(view)
   const featured =
     started && todayRow ? sessionForRow(view, todayRow) : undefined
@@ -458,7 +448,7 @@ export function ProgramScreen({
             program={view}
             includeWarmup={includeWarmup}
             mode={mode}
-            featured={started && !featured && session.name === nextName}
+            featured={false}
             done={doneIds.has(session.id)}
             canStart={started}
             onStart={onStart}
