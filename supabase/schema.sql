@@ -43,6 +43,16 @@ alter table public.workouts drop constraint if exists workouts_type_check;
 alter table public.workouts add constraint workouts_type_check
   check (type in ('regular', 'emom', 'circuit'));
 
+alter table public.workouts add column if not exists types text[] not null default array['regular']::text[];
+update public.workouts
+set types = array[coalesce(type, 'regular')]
+where cardinality(types) < 1;
+alter table public.workouts drop constraint if exists workouts_types_check;
+alter table public.workouts add constraint workouts_types_check
+  check (types <@ array['regular', 'emom', 'circuit']::text[] and cardinality(types) >= 1);
+
+alter table public.workouts add column if not exists round_rest_sec integer not null default 0;
+
 create table if not exists public.workout_exercises (
   id uuid primary key default gen_random_uuid(),
   workout_id uuid not null references public.workouts (id) on delete cascade,

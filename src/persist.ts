@@ -80,7 +80,7 @@ export function clearLastProgramId(): void {
 export function loadSessionMode(): SessionMode {
   try {
     const raw = localStorage.getItem(MODE_KEY)
-    if (raw === 'emom') return 'emom'
+    if (raw === 'emom' || raw === 'circuit' || raw === 'regular') return raw
     return 'regular'
   } catch {
     return 'regular'

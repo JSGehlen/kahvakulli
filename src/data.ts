@@ -33,6 +33,8 @@ type WorkoutRow = {
   name: string
   rounds: number
   type: string | null
+  types: string[] | null
+  round_rest_sec: number | null
   is_builtin: boolean
   is_public: boolean
 }
@@ -80,18 +82,41 @@ function toExercise(row: ExerciseRow): Exercise {
   }
 }
 
+function asWorkoutTypes(
+  value: unknown,
+  fallback: WorkoutType,
+  exercises: ExerciseRow[],
+): WorkoutType[] {
+  const listed = Array.isArray(value)
+    ? value.filter(
+        (item): item is WorkoutType =>
+          item === 'regular' || item === 'emom' || item === 'circuit',
+      )
+    : []
+  const base = listed.length > 0 ? listed : [fallback]
+  const dual =
+    base.includes('regular') &&
+    !base.includes('emom') &&
+    exercises.some((item) => Boolean(item.reps) && item.work_sec > 0)
+  const ordered = (['regular', 'emom', 'circuit'] as const).filter(
+    (item) => base.includes(item) || (dual && item === 'emom'),
+  )
+  return ordered.length > 0 ? [...ordered] : ['regular']
+}
+
 function toSession(row: WorkoutRow, exercises: ExerciseRow[]): Session {
+  const mapped = exercises.filter((item) => item.workout_id === row.id)
+  const types = asWorkoutTypes(row.types, asWorkoutType(row.type), mapped)
   return {
     id: row.id,
     name: row.name,
     rounds: row.rounds,
-    type: asWorkoutType(row.type),
+    type: types[0] ?? 'regular',
+    types,
+    roundRestSec: row.round_rest_sec ?? undefined,
     userId: row.user_id,
     isBuiltin: row.is_builtin,
-    exercises: exercises
-      .filter((item) => item.workout_id === row.id)
-      .sort((a, b) => a.sort - b.sort)
-      .map(toExercise),
+    exercises: mapped.sort((a, b) => a.sort - b.sort).map(toExercise),
   }
 }
 
@@ -161,7 +186,7 @@ export async function loadWorkouts(): Promise<Session[]> {
   const client = requireClient()
   const { data: workouts, error } = await client
     .from('workouts')
-    .select('id, user_id, name, rounds, type, is_builtin, is_public')
+    .select('id, user_id, name, rounds, type, types, round_rest_sec, is_builtin, is_public')
     .order('name')
   if (error) throw error
   const ids = (workouts ?? []).map((row) => row.id)
@@ -179,15 +204,20 @@ export async function saveWorkout(input: {
   id?: string
   name: string
   rounds: number
-  type: WorkoutType
+  types: WorkoutType[]
+  roundRestSec?: number
   userId: string
   exercises: Exercise[]
 }): Promise<Session> {
   const client = requireClient()
+  const types =
+    input.types.length > 0 ? input.types : (['regular'] as WorkoutType[])
   const payload = {
     name: input.name.trim(),
     rounds: Math.max(1, input.rounds),
-    type: input.type,
+    type: types[0],
+    types,
+    round_rest_sec: Math.max(0, input.roundRestSec ?? 0),
     user_id: input.userId,
     is_builtin: false,
     is_public: false,
@@ -254,7 +284,7 @@ export async function loadPrograms(glossary: GlossaryEntry[]): Promise<Program[]
   const [linkRes, scheduleRes, workoutRes, exerciseRes, ownerRes] = await Promise.all([
     client.from('program_workouts').select('program_id, workout_id, sort, month').in('program_id', ids),
     client.from('program_schedule').select('program_id, day, workout_id, month').in('program_id', ids),
-    client.from('workouts').select('id, user_id, name, rounds, type, is_builtin, is_public'),
+    client.from('workouts').select('id, user_id, name, rounds, type, types, round_rest_sec, is_builtin, is_public'),
     client
       .from('workout_exercises')
       .select('workout_id, glossary_id, name, sort, work_sec, rest_sec, reps, target, bell, notes'),

@@ -1,6 +1,8 @@
 export type WorkoutType = 'regular' | 'emom' | 'circuit'
 
-export type SessionMode = 'regular' | 'emom'
+export type SessionMode = WorkoutType
+
+export const WORKOUT_TYPES: WorkoutType[] = ['regular', 'emom', 'circuit']
 
 export type Exercise = {
   name: string
@@ -18,6 +20,8 @@ export type Session = {
   name: string
   rounds: number
   type: WorkoutType
+  types: WorkoutType[]
+  roundRestSec?: number
   exercises: Exercise[]
   userId?: string | null
   isBuiltin?: boolean

@@ -64,7 +64,7 @@ function bootstrap(): Boot {
   return {
     route: { name: 'session', id: saved.programId, sessionId: saved.sessionId },
     includeWarmup: saved.includeWarmup,
-    mode: saved.mode === 'emom' ? 'emom' : loadSessionMode(),
+    mode: saved.mode ?? loadSessionMode(),
     resume: {
       index: saved.index,
       remainingMs: saved.remainingMs,

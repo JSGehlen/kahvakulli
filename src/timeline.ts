@@ -1,5 +1,6 @@
 import { matchGlossary } from './parseWorkout.ts'
 import type { Exercise, Program, Segment, Session, SessionMode, WorkoutType } from './types.ts'
+import { WORKOUT_TYPES } from './types.ts'
 
 export function workoutTypeLabel(type: WorkoutType): string {
   if (type === 'emom') return 'EMOM'
@@ -7,24 +8,39 @@ export function workoutTypeLabel(type: WorkoutType): string {
   return 'Regular'
 }
 
-export function usesReps(exercise: Exercise): boolean {
-  return Boolean(exercise.reps) && !(exercise.workSec > 0)
+export function orderedTypes(types: WorkoutType[]): WorkoutType[] {
+  return WORKOUT_TYPES.filter((type) => types.includes(type))
 }
 
-export function canPlayEmom(session: Session): boolean {
-  return (
-    session.type === 'regular' &&
+export function sessionTypes(session: Session): WorkoutType[] {
+  const listed =
+    session.types?.length > 0 ? session.types : [session.type ?? 'regular']
+  const dual =
+    listed.includes('regular') &&
+    !listed.includes('emom') &&
     session.exercises.some((exercise) => Boolean(exercise.reps) && exercise.workSec > 0)
-  )
+  return orderedTypes(dual ? [...listed, 'emom'] : listed)
+}
+
+export function playableTypes(sessions: Session[]): WorkoutType[] {
+  return orderedTypes([...new Set(sessions.flatMap(sessionTypes))])
+}
+
+export function usesReps(exercise: Exercise): boolean {
+  return Boolean(exercise.reps) && !(exercise.workSec > 0)
 }
 
 export function effectiveType(
   session: Session,
   playAs: SessionMode = 'regular',
 ): WorkoutType {
-  if (session.type === 'circuit' || session.type === 'emom') return session.type
-  if (playAs === 'emom' && canPlayEmom(session)) return 'emom'
-  return 'regular'
+  const available = sessionTypes(session)
+  if (available.includes(playAs)) return playAs
+  return available[0] ?? 'regular'
+}
+
+function circuitRest(session: Session): number {
+  return session.roundRestSec ?? session.exercises.at(-1)?.restSec ?? 0
 }
 
 export function exerciseLine(
@@ -60,7 +76,7 @@ export function estimateSessionSeconds(
 ): number {
   let total = includeWarmup ? warmupSec : 0
   total += 5
-  const lastRest = session.exercises.at(-1)?.restSec ?? 0
+  const lastRest = circuitRest(session)
   const type = effectiveType(session, playAs)
 
   if (type === 'emom') {
@@ -193,7 +209,7 @@ export function buildTimeline(
     })
   }
 
-  const lastRest = session.exercises.at(-1)?.restSec ?? 0
+  const lastRest = circuitRest(session)
 
   for (let round = 1; round <= session.rounds; round += 1) {
     session.exercises.forEach((exercise, index) => {

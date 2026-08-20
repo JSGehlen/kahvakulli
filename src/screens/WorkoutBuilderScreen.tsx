@@ -1,32 +1,29 @@
 import { useMemo, useState } from 'react'
 import { deleteWorkout, saveWorkout } from '../data.ts'
-import { workoutTypeLabel } from '../timeline.ts'
+import { orderedTypes, workoutTypeLabel } from '../timeline.ts'
 import type { Exercise, GlossaryEntry, Session, WorkoutType } from '../types.ts'
+import { WORKOUT_TYPES } from '../types.ts'
 
 type DraftMove = Exercise & { key: string }
+type RegularStyle = 'work' | 'reps'
 
-const TYPES: WorkoutType[] = ['regular', 'emom', 'circuit']
-
-function blankMove(glossary: GlossaryEntry[], type: WorkoutType): DraftMove {
+function blankMove(glossary: GlossaryEntry[]): DraftMove {
   const first = glossary[0]
-  const base = {
+  return {
     key: crypto.randomUUID(),
     name: first?.name ?? '',
     glossaryId: first?.id,
-    notes: [] as string[],
+    notes: [],
+    workSec: 30,
+    restSec: 45,
   }
-  if (type === 'regular') {
-    return { ...base, workSec: 30, restSec: 45 }
-  }
-  return { ...base, workSec: 0, restSec: 0, reps: 8 }
 }
 
-function shapedForType(move: DraftMove, type: WorkoutType): DraftMove {
-  if (type === 'regular') {
-    if (move.reps) return { ...move, workSec: 0 }
-    return { ...move, workSec: move.workSec || 30, reps: undefined }
-  }
-  return { ...move, workSec: 0, restSec: 0, reps: move.reps || 8 }
+function inferRegularStyle(session?: Session): RegularStyle {
+  if (!session?.exercises.length) return 'work'
+  return session.exercises.every((exercise) => exercise.reps && !(exercise.workSec > 0))
+    ? 'reps'
+    : 'work'
 }
 
 export function WorkoutBuilderScreen({
@@ -44,15 +41,19 @@ export function WorkoutBuilderScreen({
 }) {
   const [name, setName] = useState(existing?.name ?? '')
   const [rounds, setRounds] = useState(existing?.rounds ?? 3)
-  const [type, setType] = useState<WorkoutType>(existing?.type ?? 'regular')
+  const [types, setTypes] = useState<WorkoutType[]>(
+    existing?.types?.length ? existing.types : [existing?.type ?? 'regular'],
+  )
+  const [regularStyle, setRegularStyle] = useState<RegularStyle>(() => inferRegularStyle(existing))
   const [roundRest, setRoundRest] = useState(
-    existing?.type === 'circuit' ? (existing.exercises.at(-1)?.restSec ?? 45) : 45,
+    existing?.roundRestSec ??
+      (existing?.type === 'circuit' ? (existing.exercises.at(-1)?.restSec ?? 45) : 45),
   )
   const [moves, setMoves] = useState<DraftMove[]>(
     existing?.exercises.map((exercise) => ({
       ...exercise,
       key: crypto.randomUUID(),
-    })) ?? [blankMove(glossary, existing?.type ?? 'regular')],
+    })) ?? [blankMove(glossary)],
   )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -61,9 +62,48 @@ export function WorkoutBuilderScreen({
     [glossary],
   )
 
-  const selectType = (next: WorkoutType) => {
-    setType(next)
-    setMoves((current) => current.map((move) => shapedForType(move, next)))
+  const has = (type: WorkoutType) => types.includes(type)
+  const needsReps = has('emom') || has('circuit') || (has('regular') && regularStyle === 'reps')
+
+  const patchMove = (key: string, patch: Partial<DraftMove>) => {
+    setMoves((current) =>
+      current.map((item) => (item.key === key ? { ...item, ...patch } : item)),
+    )
+  }
+
+  const toggleType = (item: WorkoutType) => {
+    setTypes((current) => {
+      if (current.includes(item)) {
+        const next = current.filter((type) => type !== item)
+        return next.length > 0 ? next : current
+      }
+      return orderedTypes([...current, item])
+    })
+    if (item === 'emom' || item === 'circuit') {
+      setMoves((current) =>
+        current.map((move) => ({ ...move, reps: move.reps || 8 })),
+      )
+    }
+  }
+
+  const selectRegularStyle = (next: RegularStyle) => {
+    setRegularStyle(next)
+    setMoves((current) =>
+      current.map((move) =>
+        next === 'work'
+          ? {
+              ...move,
+              workSec: move.workSec || 30,
+              reps: has('emom') || has('circuit') ? move.reps : undefined,
+            }
+          : {
+              ...move,
+              workSec: 0,
+              reps: move.reps || 8,
+              restSec: move.restSec || 45,
+            },
+      ),
+    )
   }
 
   const save = async () => {
@@ -76,15 +116,12 @@ export function WorkoutBuilderScreen({
       setError('Add at least one move')
       return
     }
-    if (type !== 'regular' && moves.some((move) => !move.reps)) {
-      setError('Each move needs reps')
+    if (has('regular') && regularStyle === 'work' && moves.some((move) => !(move.workSec > 0))) {
+      setError('Each move needs work seconds')
       return
     }
-    if (
-      type === 'regular' &&
-      moves.some((move) => (move.reps ? move.workSec > 0 : !(move.workSec > 0)))
-    ) {
-      setError('Each move needs work seconds or reps, not both')
+    if (needsReps && moves.some((move) => !move.reps)) {
+      setError('Each move needs reps')
       return
     }
     setBusy(true)
@@ -93,20 +130,14 @@ export function WorkoutBuilderScreen({
         id: existing?.id,
         name,
         rounds,
-        type,
+        types: orderedTypes(types),
+        roundRestSec: has('circuit') ? roundRest : 0,
         userId,
-        exercises: moves.map((move, index, all) => ({
+        exercises: moves.map((move) => ({
           name: byId.get(move.glossaryId ?? '')?.name ?? move.name,
-          workSec: type === 'regular' && !move.reps ? move.workSec : 0,
-          restSec:
-            type === 'circuit'
-              ? index === all.length - 1
-                ? roundRest
-                : 0
-              : type === 'emom'
-                ? 0
-                : move.restSec,
-          reps: type === 'regular' && move.workSec > 0 && !move.reps ? undefined : move.reps,
+          workSec: has('regular') && regularStyle === 'work' ? move.workSec : 0,
+          restSec: has('regular') ? move.restSec : 0,
+          reps: needsReps ? move.reps : undefined,
           target: move.target,
           bell: move.bell,
           notes: move.notes,
@@ -169,15 +200,14 @@ export function WorkoutBuilderScreen({
           Name
           <input value={name} onChange={(event) => setName(event.target.value)} required />
         </label>
-        <div className="mode-switch types" role="radiogroup" aria-label="Workout type">
-          {TYPES.map((item) => (
+        <div className="mode-switch types" role="group" aria-label="Workout types">
+          {WORKOUT_TYPES.map((item) => (
             <button
               key={item}
               type="button"
-              role="radio"
-              aria-checked={type === item}
-              className={type === item ? 'is-on' : undefined}
-              onClick={() => selectType(item)}
+              aria-pressed={has(item)}
+              className={has(item) ? 'is-on' : undefined}
+              onClick={() => toggleType(item)}
             >
               {workoutTypeLabel(item)}
             </button>
@@ -192,17 +222,7 @@ export function WorkoutBuilderScreen({
             onChange={(event) => setRounds(Number(event.target.value) || 1)}
           />
         </label>
-        {type === 'circuit' ? (
-          <label>
-            Rest after round (sec)
-            <input
-              type="number"
-              min={0}
-              value={roundRest}
-              onChange={(event) => setRoundRest(Number(event.target.value) || 0)}
-            />
-          </label>
-        ) : null}
+
         {moves.map((move, index) => (
           <fieldset key={move.key} className="move-card">
             <legend>Move {index + 1}</legend>
@@ -212,17 +232,10 @@ export function WorkoutBuilderScreen({
                 value={move.glossaryId ?? ''}
                 onChange={(event) => {
                   const entry = byId.get(event.target.value)
-                  setMoves((current) =>
-                    current.map((item) =>
-                      item.key === move.key
-                        ? {
-                            ...item,
-                            glossaryId: entry?.id,
-                            name: entry?.name ?? item.name,
-                          }
-                        : item,
-                    ),
-                  )
+                  patchMove(move.key, {
+                    glossaryId: entry?.id,
+                    name: entry?.name ?? move.name,
+                  })
                 }}
               >
                 {glossary.map((entry) => (
@@ -232,86 +245,13 @@ export function WorkoutBuilderScreen({
                 ))}
               </select>
             </label>
-            {type === 'regular' ? (
-              <div className="field-row">
-                <label>
-                  Work (sec)
-                  <input
-                    type="number"
-                    min={0}
-                    value={move.reps ? '' : move.workSec || ''}
-                    onChange={(event) =>
-                      setMoves((current) =>
-                        current.map((item) =>
-                          item.key === move.key
-                            ? {
-                                ...item,
-                                workSec: Number(event.target.value) || 0,
-                                reps: undefined,
-                              }
-                            : item,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  Rest (sec)
-                  <input
-                    type="number"
-                    min={0}
-                    value={move.restSec}
-                    onChange={(event) =>
-                      setMoves((current) =>
-                        current.map((item) =>
-                          item.key === move.key
-                            ? { ...item, restSec: Number(event.target.value) || 0 }
-                            : item,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-              </div>
-            ) : null}
-            <div className="field-row">
-                <label>
-                  Reps
-                  <input
-                    type="number"
-                    min={0}
-                    value={move.reps ?? ''}
-                    onChange={(event) =>
-                      setMoves((current) =>
-                        current.map((item) =>
-                          item.key === move.key
-                            ? {
-                                ...item,
-                                reps: event.target.value
-                                  ? Number(event.target.value)
-                                  : undefined,
-                                workSec: event.target.value ? 0 : item.workSec || 30,
-                              }
-                            : item,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  Bell
-                  <input
-                    value={move.bell ?? ''}
-                    onChange={(event) =>
-                      setMoves((current) =>
-                        current.map((item) =>
-                          item.key === move.key ? { ...item, bell: event.target.value } : item,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-              </div>
+            <label>
+              Bell
+              <input
+                value={move.bell ?? ''}
+                onChange={(event) => patchMove(move.key, { bell: event.target.value })}
+              />
+            </label>
             {moves.length > 1 ? (
               <button
                 className="ghost"
@@ -326,10 +266,139 @@ export function WorkoutBuilderScreen({
         <button
           className="secondary"
           type="button"
-          onClick={() => setMoves((current) => [...current, blankMove(glossary, type)])}
+          onClick={() => setMoves((current) => [...current, blankMove(glossary)])}
         >
           Add move
         </button>
+
+        {has('regular') ? (
+          <fieldset className="move-card">
+            <legend>Regular</legend>
+            <div className="mode-switch" role="radiogroup" aria-label="Regular timing">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={regularStyle === 'work'}
+                className={regularStyle === 'work' ? 'is-on' : undefined}
+                onClick={() => selectRegularStyle('work')}
+              >
+                Work
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={regularStyle === 'reps'}
+                className={regularStyle === 'reps' ? 'is-on' : undefined}
+                onClick={() => selectRegularStyle('reps')}
+              >
+                Reps
+              </button>
+            </div>
+            {moves.map((move) => (
+              <div key={move.key} className="variant-move">
+                <strong>{move.name || 'Move'}</strong>
+                <div className="field-row">
+                  {regularStyle === 'work' ? (
+                    <label>
+                      Work (sec)
+                      <input
+                        type="number"
+                        min={0}
+                        value={move.workSec || ''}
+                        onChange={(event) =>
+                          patchMove(move.key, { workSec: Number(event.target.value) || 0 })
+                        }
+                      />
+                    </label>
+                  ) : (
+                    <label>
+                      Reps
+                      <input
+                        type="number"
+                        min={0}
+                        value={move.reps ?? ''}
+                        onChange={(event) =>
+                          patchMove(move.key, {
+                            reps: event.target.value ? Number(event.target.value) : undefined,
+                          })
+                        }
+                      />
+                    </label>
+                  )}
+                  <label>
+                    Rest (sec)
+                    <input
+                      type="number"
+                      min={0}
+                      value={move.restSec}
+                      onChange={(event) =>
+                        patchMove(move.key, { restSec: Number(event.target.value) || 0 })
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
+          </fieldset>
+        ) : null}
+
+        {has('emom') ? (
+          <fieldset className="move-card">
+            <legend>EMOM</legend>
+            {moves.map((move) => (
+              <div key={move.key} className="variant-move">
+                <strong>{move.name || 'Move'}</strong>
+                <label>
+                  Reps
+                  <input
+                    type="number"
+                    min={0}
+                    value={move.reps ?? ''}
+                    onChange={(event) =>
+                      patchMove(move.key, {
+                        reps: event.target.value ? Number(event.target.value) : undefined,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            ))}
+          </fieldset>
+        ) : null}
+
+        {has('circuit') ? (
+          <fieldset className="move-card">
+            <legend>Circuit</legend>
+            <label>
+              Rest after round (sec)
+              <input
+                type="number"
+                min={0}
+                value={roundRest}
+                onChange={(event) => setRoundRest(Number(event.target.value) || 0)}
+              />
+            </label>
+            {moves.map((move) => (
+              <div key={move.key} className="variant-move">
+                <strong>{move.name || 'Move'}</strong>
+                <label>
+                  Reps
+                  <input
+                    type="number"
+                    min={0}
+                    value={move.reps ?? ''}
+                    onChange={(event) =>
+                      patchMove(move.key, {
+                        reps: event.target.value ? Number(event.target.value) : undefined,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            ))}
+          </fieldset>
+        ) : null}
+
         {error ? <p className="form-error">{error}</p> : null}
         <button className="primary" type="submit" disabled={busy}>
           Save workout

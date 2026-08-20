@@ -1042,6 +1042,21 @@ h2 {
   gap: 12px;
 }
 
+.move-card .mode-switch {
+  margin: 0;
+}
+
+.variant-move {
+  display: grid;
+  gap: 8px;
+}
+
+.variant-move > strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
 .pick-list {
   list-style: none;
   padding: 0;

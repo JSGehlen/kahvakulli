@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  canPlayEmom,
   effectiveType,
   estimateSessionSeconds,
   exerciseLine,
   formatMinutes,
+  playableTypes,
   workoutTypeLabel,
 } from '../timeline.ts'
 import { displayTitle } from '../loadWorkouts.ts'
@@ -295,7 +295,8 @@ export function ProgramScreen({
         .join(' · ')
     : owner
 
-  const showEmomChoice = view.sessions.some(canPlayEmom)
+  const typeOptions = playableTypes(view.sessions)
+  const showTypeChoice = started && typeOptions.length > 1
   const controls = (
     <>
       {program.warmup ? (
@@ -309,26 +310,24 @@ export function ProgramScreen({
           {warmupToggleLabel(program.warmup.totalSec)}
         </label>
       ) : null}
-      {showEmomChoice ? (
-        <div className="mode-switch" role="radiogroup" aria-label="Workout timing">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={mode === 'regular'}
-            className={mode === 'regular' ? 'is-on' : undefined}
-            onClick={() => onModeChange('regular')}
-          >
-            Regular
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={mode === 'emom'}
-            className={mode === 'emom' ? 'is-on' : undefined}
-            onClick={() => onModeChange('emom')}
-          >
-            EMOM
-          </button>
+      {showTypeChoice ? (
+        <div
+          className={`mode-switch${typeOptions.length > 2 ? ' types' : ''}`}
+          role="radiogroup"
+          aria-label="Workout timing"
+        >
+          {typeOptions.map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="radio"
+              aria-checked={mode === item}
+              className={mode === item ? 'is-on' : undefined}
+              onClick={() => onModeChange(item)}
+            >
+              {workoutTypeLabel(item)}
+            </button>
+          ))}
         </div>
       ) : null}
     </>

@@ -90,7 +90,7 @@ function buildSeed() {
     monthProgram.sessions.forEach((session, sessionIndex) => {
       const workoutId = idFor('workout', `${monthProgram.sourceFile}:${session.name}`)
       statements.push(
-        `insert into public.workouts (id, user_id, name, rounds, type, is_builtin, is_public) values (${sql(workoutId)}, null, ${sql(session.name)}, ${session.rounds}, 'regular', true, true);`,
+        `insert into public.workouts (id, user_id, name, rounds, type, types, round_rest_sec, is_builtin, is_public) values (${sql(workoutId)}, null, ${sql(session.name)}, ${session.rounds}, 'regular', ARRAY['regular', 'emom']::text[], 0, true, true);`,
       )
       statements.push(
         `insert into public.program_workouts (program_id, workout_id, sort, month) values (${sql(programId)}, ${sql(workoutId)}, ${month * 10 + sessionIndex}, ${month});`,

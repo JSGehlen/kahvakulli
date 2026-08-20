@@ -282,6 +282,9 @@ function parseSession(name: string, body: string): Session {
     name,
     rounds,
     type: 'regular',
+    types: exercises.some((exercise) => Boolean(exercise.reps) && exercise.workSec > 0)
+      ? ['regular', 'emom']
+      : ['regular'],
     exercises,
   }
 }
