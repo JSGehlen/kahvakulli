@@ -769,14 +769,27 @@ h2 {
   margin: 28px 0 18px;
 }
 
+.session-round {
+  text-align: center;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin: -10px 0 16px;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+
+.phase:empty {
+  margin: 0;
+}
+
 .session-work { --phase: var(--work); }
 .session-rest { --phase: var(--rest); }
 .session-warmup { --phase: var(--warmup); }
 .session-prepare { --phase: var(--prepare); }
 
-.session-work .phase { visibility: hidden; }
+.session-work .phase { color: var(--work); }
 .session-work.is-emom .phase {
-  visibility: visible;
   color: var(--work);
 }
 .session-work .clock { color: var(--work); }
@@ -1186,6 +1199,10 @@ h2 {
 
   .phase {
     margin: 8px 0 10px;
+  }
+
+  .session-round {
+    margin: -4px 0 8px;
   }
 
   .dial {

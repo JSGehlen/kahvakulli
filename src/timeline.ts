@@ -1,5 +1,5 @@
 import { matchGlossary } from './parseWorkout.ts'
-import type { Exercise, Program, Segment, Session, SessionMode, WorkoutType } from './types.ts'
+import type { Exercise, Program, Segment, Session, SessionMode, Warmup, WorkoutType } from './types.ts'
 import { WORKOUT_TYPES } from './types.ts'
 
 export function workoutTypeLabel(type: WorkoutType): string {
@@ -125,9 +125,20 @@ export function sessionMinutes(
   )
 }
 
-export function formatWarmupMeta(totalSec: number): string {
-  const minutes = Math.max(1, Math.round(totalSec / 60))
-  return `Repeats for ${minutes} min`
+export function countWarmupRounds(warmup: Warmup): number {
+  if (warmup.steps.length === 0 || warmup.totalSec <= 0) return 0
+  let elapsed = 0
+  let rounds = 0
+  let guard = 0
+  while (elapsed < warmup.totalSec && guard < 40) {
+    rounds += 1
+    for (const step of warmup.steps) {
+      if (elapsed >= warmup.totalSec) break
+      elapsed += step.durationSec
+    }
+    guard += 1
+  }
+  return rounds
 }
 
 function baseWork(
@@ -173,16 +184,20 @@ export function buildTimeline(
 
   if (includeWarmup && program.warmup) {
     const { warmup } = program
+    const totalWarmupRounds = countWarmupRounds(warmup)
     let elapsed = 0
+    let round = 0
     let guard = 0
     while (elapsed < warmup.totalSec && guard < 40) {
+      round += 1
       for (const step of warmup.steps) {
         if (elapsed >= warmup.totalSec) break
         segments.push({
           kind: 'warmup',
           title: step.name,
-          subtitle: formatWarmupMeta(warmup.totalSec),
           durationSec: step.durationSec,
+          round,
+          totalRounds: totalWarmupRounds,
           nextTitle: first?.name,
         })
         elapsed += step.durationSec
@@ -195,7 +210,7 @@ export function buildTimeline(
     segments.push({
       kind: 'prepare',
       title: first.name,
-      subtitle: `Round 1/${session.rounds} · Move 1/${totalExercises}`,
+      subtitle: `Move 1/${totalExercises}`,
       durationSec: 5,
       round: 1,
       totalRounds: session.rounds,
@@ -219,7 +234,7 @@ export function buildTimeline(
       const last =
         round === session.rounds && index === session.exercises.length - 1
       const lastOfRound = index === session.exercises.length - 1
-      const subtitle = `Round ${round}/${session.rounds} · Move ${index + 1}/${totalExercises}`
+      const subtitle = `Move ${index + 1}/${totalExercises}`
 
       if (type === 'emom') {
         const minute = (round - 1) * totalExercises + index + 1
@@ -232,7 +247,7 @@ export function buildTimeline(
             session.rounds,
             index,
             totalExercises,
-            `Minute ${minute}/${totalMinutes} · Round ${round}/${session.rounds}`,
+            `Minute ${minute}/${totalMinutes}`,
             last ? undefined : nextExercise?.name,
             { durationSec: 60, hideWorkClock: true },
           ),
@@ -262,7 +277,6 @@ export function buildTimeline(
           segments.push({
             kind: 'rest',
             title: 'Breathe',
-            subtitle: `Round ${round}/${session.rounds}`,
             durationSec: Math.max(lastRest, 0),
             round,
             totalRounds: session.rounds,

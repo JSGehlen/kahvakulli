@@ -439,6 +439,7 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
           }, 900)
           setRoute({ name: 'done', id: program.id, sessionId: session.id })
         }}
+        onEndEarly={() => leaveWorkout({ name: 'program', id: program.id })}
       />
     )
   }

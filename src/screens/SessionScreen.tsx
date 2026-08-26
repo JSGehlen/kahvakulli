@@ -15,6 +15,7 @@ type Props = {
   onPersist: (state: RestoredTimer) => void
   onExit: () => void
   onDone: () => void
+  onEndEarly: () => void
 }
 
 const phaseLabel: Record<Segment['kind'], string> = {
@@ -34,10 +35,13 @@ export function SessionScreen({
   onPersist,
   onExit,
   onDone,
+  onEndEarly,
 }: Props) {
   const session = useSession(segments, restored)
   const [sheet, setSheet] = useState<GlossaryEntry[] | null>(null)
+  const [ending, setEnding] = useState(false)
   const pausedByForm = useRef(false)
+  const pausedByEnd = useRef(false)
   const persistRef = useRef(onPersist)
   const snapshotRef = useRef({
     index: session.index,
@@ -139,6 +143,27 @@ export function SessionScreen({
     session.resume()
   }
 
+  const askEndEarly = () => {
+    if (session.status === 'running') {
+      session.pause()
+      pausedByEnd.current = true
+    }
+    setEnding(true)
+  }
+
+  const cancelEndEarly = () => {
+    setEnding(false)
+    if (!pausedByEnd.current) return
+    pausedByEnd.current = false
+    session.resume()
+  }
+
+  const confirmEndEarly = () => {
+    pausedByEnd.current = false
+    setEnding(false)
+    onEndEarly()
+  }
+
   const segment = session.segment
   if (!segment) return null
 
@@ -160,6 +185,17 @@ export function SessionScreen({
     (workoutType === 'emom' && segment.kind === 'work' && !emomResting) ||
     (awaiting && kind === 'work')
   const ringProgress = hideWorkClock ? 0 : session.progress
+  const roundText =
+    segment.round && segment.totalRounds
+      ? `Round ${segment.round}/${segment.totalRounds}`
+      : undefined
+  const phaseText =
+    kind === 'work' && workoutType === 'emom'
+      ? 'EMOM'
+      : kind === 'work'
+        ? undefined
+        : phaseLabel[kind]
+  const showRound = Boolean(roundText && phaseText)
 
   const finishWork = () => {
     session.complete()
@@ -187,13 +223,8 @@ export function SessionScreen({
         </button>
       </header>
 
-      <p className="phase">
-        {kind === 'work' && workoutType === 'emom'
-          ? 'EMOM'
-          : awaiting && kind === 'work'
-            ? ''
-            : phaseLabel[kind]}
-      </p>
+      <p className="phase">{phaseText ?? roundText}</p>
+      {showRound ? <p className="session-round">{roundText}</p> : null}
 
       <div
         className="dial"
@@ -212,7 +243,7 @@ export function SessionScreen({
         </div>
       </div>
 
-      <p className="meta">{segment.subtitle}</p>
+      {segment.subtitle ? <p className="meta">{segment.subtitle}</p> : null}
       {segment.kind !== 'prepare' && segment.nextTitle ? (
         <p className="next">
           {segment.kind === 'warmup' ? 'First lift' : 'Next'}: {segment.nextTitle}
@@ -250,10 +281,16 @@ export function SessionScreen({
             Skip
           </button>
         </div>
-        <button className="end-workout" type="button" onClick={onDone}>
+        <button className="end-workout" type="button" onClick={askEndEarly}>
           End workout
         </button>
       </div>
+
+      <EndWorkoutDialog
+        open={ending}
+        onEnd={confirmEndEarly}
+        onCancel={cancelEndEarly}
+      />
 
       {sheet ? (
         <div className="sheet" role="dialog" aria-modal="true" aria-label="Form cues">
@@ -283,6 +320,46 @@ export function SessionScreen({
         </div>
       ) : null}
     </main>
+  )
+}
+
+function EndWorkoutDialog({
+  open,
+  onEnd,
+  onCancel,
+}: {
+  open: boolean
+  onEnd: () => void
+  onCancel: () => void
+}) {
+  const ref = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    if (open && !node.open) node.showModal()
+    if (!open && node.open) node.close()
+  }, [open])
+
+  return (
+    <dialog
+      ref={ref}
+      className="confirm"
+      aria-labelledby="end-workout-title"
+      onCancel={(event) => {
+        event.preventDefault()
+        onCancel()
+      }}
+    >
+      <h2 id="end-workout-title">End workout</h2>
+      <p>Are you sure you want to end early? This session will not count as completed.</p>
+      <button className="primary" type="button" onClick={onEnd}>
+        End
+      </button>
+      <button className="secondary" type="button" onClick={onCancel}>
+        Cancel
+      </button>
+    </dialog>
   )
 }
 
