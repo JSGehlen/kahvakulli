@@ -97,7 +97,9 @@ function asWorkoutTypes(
   const dual =
     base.includes('regular') &&
     !base.includes('emom') &&
-    exercises.some((item) => Boolean(item.reps) && item.work_sec > 0)
+    exercises.length > 0 &&
+    exercises.every((item) => Boolean(item.reps)) &&
+    exercises.some((item) => item.work_sec > 0)
   const ordered = (['regular', 'emom', 'circuit'] as const).filter(
     (item) => base.includes(item) || (dual && item === 'emom'),
   )

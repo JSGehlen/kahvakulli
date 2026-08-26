@@ -37,17 +37,17 @@ Repeat for **3–5 minutes**:
 1. **Reverse Goblet Lunge**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 10
+    - Reps: 12
     - Suggested bell: **12–16 kg**
 2. **Clean & Press (2 hands)**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 6
+    - Reps: 8
     - Suggested bell: **12 kg**
 3. **Kettlebell Row**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 10
+    - Reps: 12
     - Suggested bell: **16 kg**
 
 ---
@@ -59,17 +59,17 @@ Repeat for **3–5 minutes**:
 1. **Kettlebell Swing**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 12
+    - Reps: 18
     - Suggested bell: **12–16 kg**
 2. **Clean & Press (2 hands)**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 6
+    - Reps: 8
     - Suggested bell: **12 kg**
 3. **Kettlebell Row**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 10
+    - Reps: 12
     - Suggested bell: **16 kg**
 
 ---
@@ -81,12 +81,12 @@ Repeat for **3–5 minutes**:
 1. **Kettlebell Row**
     - Work: 35 seconds
     - Rest: 25 seconds
-    - Reps: 12
+    - Reps: 15
     - Suggested bell: **16 kg**
 2. **Push Up (kneeling)**
     - Work: 35 seconds
     - Rest: 25 seconds
-    - Reps: 10
+    - Reps: 22
 3. **Suitcase March**
     - Work: 35 seconds
     - Rest: 25 seconds

@@ -18,7 +18,9 @@ export function sessionTypes(session: Session): WorkoutType[] {
   const dual =
     listed.includes('regular') &&
     !listed.includes('emom') &&
-    session.exercises.some((exercise) => Boolean(exercise.reps) && exercise.workSec > 0)
+    session.exercises.length > 0 &&
+    session.exercises.every((exercise) => Boolean(exercise.reps)) &&
+    session.exercises.some((exercise) => exercise.workSec > 0)
   return orderedTypes(dual ? [...listed, 'emom'] : listed)
 }
 

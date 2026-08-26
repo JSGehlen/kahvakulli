@@ -38,21 +38,22 @@ Repeat for **3–5 minutes**:
     - Work: 35 seconds
     - Rest: 35 seconds
     - Target: 4 sequences
+    - Reps: 5
     - Suggested bell: **12–16 kg**
 2. **Single Arm Clean — Right**
     - Work: 35 seconds
     - Rest: 35 seconds
-    - Reps: 6
+    - Reps: 8
     - Suggested bell: **12 kg**
 3. **Single Arm Clean — Left**
     - Work: 35 seconds
     - Rest: 35 seconds
-    - Reps: 6
+    - Reps: 8
     - Suggested bell: **12 kg**
 4. **Clean & Press (2 hands)**
     - Work: 35 seconds
     - Rest: 35 seconds
-    - Reps: 6
+    - Reps: 8
     - Suggested bell: **12 kg**
 
 ---
@@ -64,12 +65,12 @@ Repeat for **3–5 minutes**:
 1. **Kettlebell Swing**
     - Work: 30 seconds
     - Rest: 30 seconds
-    - Reps: 12
+    - Reps: 18
     - Suggested bell: **12–16 kg**
 2. **Push Ups (kneeling)**
     - Work: 30 seconds
     - Rest: 30 seconds
-    - Reps: 10
+    - Reps: 20
 
 ---
 
@@ -80,12 +81,12 @@ Repeat for **3–5 minutes**:
 1. **Goblet Squat**
     - Work: 35 seconds
     - Rest: 25 seconds
-    - Reps: 10
+    - Reps: 12
     - Suggested bell: **16 kg**
 2. **Ballistic or Single Arm Row**
     - Work: 35 seconds
     - Rest: 35 seconds
-    - Reps: 8
+    - Reps: 10
     - Suggested bell: **12–16 kg**
 3. **Dead Bug or Crunch**
     - Work: 35 seconds
@@ -94,7 +95,7 @@ Repeat for **3–5 minutes**:
 4. **Single Arm Clean & Press (alternating)**
     - Work: 35 seconds
     - Rest: 25 seconds
-    - Reps: 6
+    - Reps: 8
     - Suggested bell: **12 kg**
 
 ---
