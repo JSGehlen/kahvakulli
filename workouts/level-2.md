@@ -88,9 +88,9 @@ Repeat for **3–5 minutes**:
     - Rest: 25 seconds
     - Reps: 22
 3. **Suitcase March**
-    - Work: 35 seconds
+    - Work: 60 seconds
     - Rest: 25 seconds
-    - Target: switch sides halfway
+    - Target: 30s each side
     - Suggested bell: **16 kg**
 
 ---
@@ -165,7 +165,11 @@ The movement should be driven primarily by your hips rather than your arms.
 6. Avoid leaning toward or away from the kettlebell.
 7. Switch hands halfway through the interval.
 
-For a 35-second interval, alternate which side starts each round.
+For a 60-second interval:
+
+* 30 seconds right
+* 30 seconds left
+* Alternate which side starts each round.
 
 ---
 
