@@ -86,9 +86,9 @@ Repeat 3×
     * Rest: 30 seconds
     * Reps: 22
 3. Suitcase Hold
-    * Work: 30 seconds
+    * Work: 60 seconds
     * Rest: 30 seconds
-    * Target: 15s each side
+    * Target: 30s each side
     * Suggested bell: 16 kg
 
 ---
@@ -168,10 +168,10 @@ Suitcase Hold
 4. Avoid leaning to either side.
 5. Maintain an upright posture.
 
-For a 30-second interval:
+For a 60-second interval:
 
-* 15 seconds right
-* 15 seconds left
+* 30 seconds right
+* 30 seconds left
 
 ---
 
