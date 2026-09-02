@@ -280,7 +280,7 @@ export function ProgramScreen({
   const owner =
     program.ownerName && !program.isBuiltin ? `By ${program.ownerName}.` : ''
   const multiMonth = phases.length > 1
-  const week = phase && started ? currentWeek(phase, progress.completions) : 0
+  const week = phase && started ? currentWeek(progress) : 0
   const readyToProceed =
     started && canAdvanceMonth(program, { ...progress, currentMonth: month })
   const nextMonth = program.phases.find((item) => item.month === month + 1)
@@ -506,7 +506,7 @@ export function HomeScreen({
     currentProgram?.phases[0]
   const week =
     started && currentPhase && currentProgress
-      ? currentWeek(currentPhase, currentProgress.completions)
+      ? currentWeek(currentProgress)
       : undefined
   const currentMeta =
     started && currentProgram
