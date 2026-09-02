@@ -52,7 +52,7 @@ function viewForPhase(program: Program, phase: ProgramPhase): Program {
   }
 }
 
-type WeekStatus = 'done' | 'today' | 'upcoming' | 'available'
+type WeekStatus = 'done' | 'today' | 'upcoming' | 'missed'
 
 type WeekRow = {
   day: string
@@ -126,15 +126,22 @@ function rowStatus(row: WeekRow, done: boolean): WeekStatus | undefined {
   if (row.rest) return isToday ? 'today' : undefined
   if (done) return 'done'
   if (isToday) return 'today'
-  if (weekOrder(row.day) < weekOrder(weekday)) return 'available'
+  if (weekOrder(row.day) < weekOrder(weekday)) return 'missed'
   return 'upcoming'
 }
 
 function statusLabel(status: WeekStatus): string {
   if (status === 'done') return 'Done'
   if (status === 'today') return 'Today'
-  if (status === 'available') return 'Available'
+  if (status === 'missed') return 'Missed'
   return 'Upcoming'
+}
+
+function sessionMissed(program: Program, session: Session, done: boolean): boolean {
+  if (done) return false
+  const row = program.schedule.find((item) => item.workout === session.name)
+  if (!row) return false
+  return weekOrder(row.day) < weekOrder(weekday)
 }
 
 function shortDay(day: string): string {
@@ -152,6 +159,7 @@ function SessionCard({
   mode,
   featured,
   done,
+  missed,
   canStart,
   onStart,
 }: {
@@ -161,6 +169,7 @@ function SessionCard({
   mode: SessionMode
   featured: boolean
   done: boolean
+  missed: boolean
   canStart: boolean
   onStart: (session: Session) => void
 }) {
@@ -181,7 +190,11 @@ function SessionCard({
             {session.exercises.length} moves · {formatMinutes(seconds)}
           </p>
         </div>
-        {done ? <span className="badge">Completed</span> : null}
+        {done ? (
+          <span className="badge">Completed</span>
+        ) : missed ? (
+          <span className="badge is-missed">Missed</span>
+        ) : null}
       </header>
       <ol>
         {session.exercises.map((exercise) => (
@@ -393,6 +406,7 @@ export function ProgramScreen({
                   className={[
                     isToday ? 'today' : undefined,
                     dayStatus === 'done' ? 'is-done' : undefined,
+                    dayStatus === 'missed' ? 'is-missed' : undefined,
                     row.rest ? 'is-rest' : undefined,
                   ]
                     .filter(Boolean)
@@ -430,6 +444,7 @@ export function ProgramScreen({
             mode={mode}
             featured
             done={doneIds.has(featured.id)}
+            missed={sessionMissed(view, featured, doneIds.has(featured.id))}
             canStart={started}
             onStart={onStart}
           />
@@ -449,6 +464,7 @@ export function ProgramScreen({
             mode={mode}
             featured={false}
             done={doneIds.has(session.id)}
+            missed={sessionMissed(view, session, doneIds.has(session.id))}
             canStart={started}
             onStart={onStart}
           />

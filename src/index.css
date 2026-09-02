@@ -268,6 +268,10 @@ h2 {
   color: var(--copper);
 }
 
+.week-strip .status.is-missed {
+  color: var(--muted);
+}
+
 .week-strip .today.is-done,
 .week-strip .today.is-done .week-work {
   color: var(--ink);
@@ -481,6 +485,11 @@ h2 {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.badge.is-missed {
+  background: var(--quiet);
+  color: var(--ink);
 }
 
 .primary,
