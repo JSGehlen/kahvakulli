@@ -8,7 +8,7 @@
 **Month:** 3
 **Difficulty:** Advanced
 **Name:** Complexes & Intensity
-**Focus:** Combine single-arm lifts and movements into denser, harder sessions.
+**Focus:** Single-arm and ballistic work. Load and recovery matter more than following the short rests perfectly.
 
 ## **Weekly Schedule**
 
@@ -39,22 +39,23 @@ Repeat for **3–5 minutes**:
     - Rest: 35 seconds
     - Target: 4 sequences
     - Reps: 5
-    - Suggested bell: **12–16 kg**
+    - Suggested bell: **16–20 kg**
 2. **Single Arm Clean — Right**
     - Work: 35 seconds
     - Rest: 35 seconds
     - Reps: 8
-    - Suggested bell: **12 kg**
+    - Suggested bell: **12–16 kg**
 3. **Single Arm Clean — Left**
     - Work: 35 seconds
     - Rest: 35 seconds
     - Reps: 8
-    - Suggested bell: **12 kg**
+    - Suggested bell: **12–16 kg**
 4. **Clean & Press (2 hands)**
     - Work: 35 seconds
-    - Rest: 35 seconds
+    - Rest: 75 seconds
     - Reps: 8
-    - Suggested bell: **12 kg**
+    - Suggested bell: **12–16 kg**
+    - Notes: Do not rush the overhead portion
 
 ---
 
@@ -65,12 +66,14 @@ Repeat for **3–5 minutes**:
 1. **Kettlebell Swing**
     - Work: 30 seconds
     - Rest: 30 seconds
-    - Reps: 18
-    - Suggested bell: **12–16 kg**
-2. **Push Ups (kneeling)**
+    - Reps: 12
+    - Suggested bell: **16–24 kg**
+    - Notes: Crisp, explosive reps
+2. **Push Up**
     - Work: 30 seconds
     - Rest: 30 seconds
-    - Reps: 20
+    - Reps: 12
+    - Notes: Stop before technical failure
 
 ---
 
@@ -82,21 +85,25 @@ Repeat for **3–5 minutes**:
     - Work: 35 seconds
     - Rest: 25 seconds
     - Reps: 12
-    - Suggested bell: **16 kg**
-2. **Ballistic or Single Arm Row**
+    - Suggested bell: **16–20+ kg**
+    - Notes: Controlled descent
+2. **Single Arm Row**
     - Work: 35 seconds
     - Rest: 35 seconds
     - Reps: 10
-    - Suggested bell: **12–16 kg**
+    - Suggested bell: **16–20+ kg**
+    - Notes: Controlled single-arm row unless you are confident with ballistic rows
 3. **Dead Bug or Crunch**
     - Work: 35 seconds
     - Rest: 25 seconds
     - Reps: 10
+    - Notes: Keep this controlled
 4. **Single Arm Clean & Press (alternating)**
     - Work: 35 seconds
     - Rest: 25 seconds
     - Reps: 8
-    - Suggested bell: **12 kg**
+    - Suggested bell: **12–16 kg**
+    - Notes: Avoid grinding ugly reps
 
 ---
 
@@ -165,6 +172,20 @@ Avoid letting the kettlebell slam into your forearm.
 
 The movement should be driven primarily by your hips rather than your arms.
 
+Keep each rep explosive and technically clean. Do not chase maximum reps.
+
+---
+
+## **Push Up**
+
+1. Start in a high plank.
+2. Place your hands slightly wider than shoulder width.
+3. Keep your body in a straight line from head to heels.
+4. Lower your chest toward the floor.
+5. Press through your palms to return to the start.
+
+If these are easy, use a slower lowering, a pause at the bottom, or elevate your feet.
+
 ---
 
 ## **Kneeling Push Up**
@@ -174,6 +195,8 @@ The movement should be driven primarily by your hips rather than your arms.
 3. Keep your body in a straight line from knees to shoulders.
 4. Lower your chest toward the floor.
 5. Press through your palms to return to the start.
+
+Use these only if full push-ups are not clean yet.
 
 ---
 
@@ -196,6 +219,8 @@ The movement should be driven primarily by your hips rather than your arms.
 4. Pull the kettlebell toward your hip.
 5. Keep your elbow close to your body.
 6. Lower it under control.
+
+Prefer this controlled row unless you are confident with ballistic rows.
 
 ---
 
@@ -244,10 +269,10 @@ For the **alternating** version:
 
 | **Exercise** | **Suggested Bell** |
 | --- | --- |
-| Goblet Squat | 16 kg |
-| Goblet Squat → 2 Lunges | 12–16 kg |
-| Single Arm Clean | 12 kg |
-| Clean & Press (2 hands) | 12 kg |
-| Kettlebell Swing | 12–16 kg |
-| Ballistic / Single Arm Row | 12–16 kg |
-| Single Arm Clean & Press | 12 kg |
+| Goblet Squat | 16–20+ kg |
+| Goblet Squat → 2 Lunges | 16–20 kg |
+| Single Arm Clean | 12–16 kg |
+| Clean & Press (2 hands) | 12–16 kg |
+| Kettlebell Swing | 16–24 kg |
+| Single Arm Row | 16–20+ kg |
+| Single Arm Clean & Press | 12–16 kg |

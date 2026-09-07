@@ -8,7 +8,7 @@
 **Month:** 2
 **Difficulty:** Intermediate
 **Name:** Power & Conditioning
-**Focus:** Add swings, lunges, and carries as the pace picks up.
+**Focus:** Add swings, lunges, and carries. Do not let the shorter rests turn this into pure cardio.
 
 ## **Weekly Schedule**
 
@@ -36,19 +36,22 @@ Repeat for **3–5 minutes**:
 
 1. **Reverse Goblet Lunge**
     - Work: 30 seconds
-    - Rest: 35 seconds
+    - Rest: 60 seconds
     - Reps: 12
     - Suggested bell: **12–16 kg**
+    - Notes: Controlled alternating reps
 2. **Clean & Press (2 hands)**
     - Work: 30 seconds
     - Rest: 35 seconds
     - Reps: 8
-    - Suggested bell: **12 kg**
+    - Suggested bell: **12–16 kg**
+    - Notes: Smooth, controlled reps
 3. **Kettlebell Row**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 12
-    - Suggested bell: **16 kg**
+    - Reps: 10
+    - Suggested bell: **16–20+ kg**
+    - Notes: Pause at the top
 
 ---
 
@@ -59,18 +62,21 @@ Repeat for **3–5 minutes**:
 1. **Kettlebell Swing**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 18
-    - Suggested bell: **12–16 kg**
+    - Reps: 12
+    - Suggested bell: **16–24 kg**
+    - Notes: Crisp reps, not maximum reps
 2. **Clean & Press (2 hands)**
     - Work: 30 seconds
     - Rest: 35 seconds
     - Reps: 8
-    - Suggested bell: **12 kg**
+    - Suggested bell: **12–16 kg**
+    - Notes: Strength-focused, not rushed
 3. **Kettlebell Row**
     - Work: 30 seconds
     - Rest: 35 seconds
-    - Reps: 12
-    - Suggested bell: **16 kg**
+    - Reps: 10
+    - Suggested bell: **16–20+ kg**
+    - Notes: Heaviest bell you can row cleanly
 
 ---
 
@@ -81,17 +87,20 @@ Repeat for **3–5 minutes**:
 1. **Kettlebell Row**
     - Work: 35 seconds
     - Rest: 25 seconds
-    - Reps: 15
-    - Suggested bell: **16 kg**
-2. **Push Up (kneeling)**
+    - Reps: 12
+    - Suggested bell: **16–20+ kg**
+    - Notes: Controlled reps, heavier bell over faster reps
+2. **Push Up**
     - Work: 35 seconds
     - Rest: 25 seconds
-    - Reps: 22
+    - Reps: 12
+    - Notes: If 35 seconds is easy, slower reps or a harder variation
 3. **Suitcase March**
-    - Work: 60 seconds
+    - Work: 35 seconds
     - Rest: 25 seconds
-    - Target: 30s each side
-    - Suggested bell: **16 kg**
+    - Target: switch halfway
+    - Suggested bell: **20–24+ kg**
+    - Notes: Move slowly. Keep hips and shoulders level.
 
 ---
 
@@ -128,6 +137,8 @@ Repeat for **3–5 minutes**:
 5. Keep your core braced.
 6. Lower it under control.
 
+- Pause briefly at the top of each rep.
+
 ---
 
 ## **Kettlebell Swing**
@@ -143,6 +154,20 @@ Repeat for **3–5 minutes**:
 
 The movement should be driven primarily by your hips rather than your arms.
 
+Keep each rep explosive and technically clean. Do not chase maximum reps.
+
+---
+
+## **Push Up**
+
+1. Start in a high plank.
+2. Place your hands slightly wider than shoulder width.
+3. Keep your body in a straight line from head to heels.
+4. Lower your chest toward the floor.
+5. Press through your palms to return to the start.
+
+If these are easy, use a slower lowering, a pause at the bottom, or elevate your feet.
+
 ---
 
 ## **Kneeling Push Up**
@@ -152,6 +177,8 @@ The movement should be driven primarily by your hips rather than your arms.
 3. Keep your body in a straight line from knees to shoulders.
 4. Lower your chest toward the floor.
 5. Press through your palms to return to the start.
+
+Use these only if full push-ups are not clean yet.
 
 ---
 
@@ -165,10 +192,9 @@ The movement should be driven primarily by your hips rather than your arms.
 6. Avoid leaning toward or away from the kettlebell.
 7. Switch hands halfway through the interval.
 
-For a 60-second interval:
+For a 35-second interval:
 
-* 30 seconds right
-* 30 seconds left
+* Switch hands halfway
 * Alternate which side starts each round.
 
 ---
@@ -178,7 +204,7 @@ For a 60-second interval:
 | **Exercise** | **Suggested Bell** |
 | --- | --- |
 | Reverse Goblet Lunge | 12–16 kg |
-| Clean & Press | 12 kg |
-| Kettlebell Row | 16 kg |
-| Kettlebell Swing | 12–16 kg |
-| Suitcase March | 16 kg |
+| Clean & Press | 12–16 kg |
+| Kettlebell Row | 16–20+ kg |
+| Kettlebell Swing | 16–24 kg |
+| Suitcase March | 20–24+ kg |

@@ -371,7 +371,6 @@ function normalizeName(value: string): string {
     .replace(/[()]/g, ' ')
     .replace(/\bkettlebell\b/g, '')
     .replace(/\b2\s*hands?\b/g, '')
-    .replace(/\bkneeling\b/g, '')
     .replace(/\b(right|left|alternating)\b/g, '')
     .replace(/ies\b/g, 'y')
     .replace(/s\b/g, '')
