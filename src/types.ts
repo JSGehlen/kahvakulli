@@ -8,6 +8,7 @@ export type Exercise = {
   name: string
   workSec: number
   restSec: number
+  sets?: number
   reps?: number
   target?: string
   bell?: string
@@ -106,6 +107,7 @@ export type Segment = {
   durationSec: number
   round?: number
   totalRounds?: number
+  roundKind?: 'round' | 'set'
   exerciseIndex?: number
   totalExercises?: number
   bell?: string

@@ -50,6 +50,32 @@ export function currentWeek(progress: ProgramProgress, now = new Date()): number
   return Math.min(MONTH_WEEKS, Math.max(1, weekInMonth(progress, now)))
 }
 
+export function usesAbAlternation(schedule: { workout?: string }[]): boolean {
+  const names = new Set<string>()
+  for (const row of schedule) {
+    if (row.workout) names.add(row.workout)
+  }
+  return names.size === 2 && names.has('Workout A') && names.has('Workout B')
+}
+
+/** Week 1 = A/B/A, week 2 = B/A/B, then repeat from the Monday you started. */
+export function abCycleWeek(progress: ProgramProgress, now = new Date()): number {
+  if (!progress.startedAt) return 1
+  return ((calendarProgramWeek(progress.startedAt, now) - 1) % 2) + 1
+}
+
+export function scheduleForAbCycle<T extends { workout: string }>(
+  schedule: T[],
+  cycleWeek: number,
+): T[] {
+  if (cycleWeek % 2 === 1 || !usesAbAlternation(schedule)) return schedule
+  return schedule.map((row) => {
+    if (row.workout === 'Workout A') return { ...row, workout: 'Workout B' }
+    if (row.workout === 'Workout B') return { ...row, workout: 'Workout A' }
+    return row
+  })
+}
+
 export function leftoverLine(program: Program, progress: ProgramProgress): string {
   if (program.phases.length < 2) {
     return "Are you sure you want to end early? You have this week's sessions left of this program."

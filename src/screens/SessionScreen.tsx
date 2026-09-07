@@ -178,7 +178,7 @@ export function SessionScreen({
   const dialDetail = emomResting
     ? undefined
     : hideWorkClock
-      ? [segment.reps ? 'reps' : segment.target, segment.bell].filter(Boolean).join(' · ') ||
+      ? [segment.target ?? (segment.reps ? 'reps' : undefined), segment.bell].filter(Boolean).join(' · ') ||
         undefined
       : [segment.target, segment.bell].filter(Boolean).join(' · ') || undefined
   const showComplete =
@@ -187,7 +187,7 @@ export function SessionScreen({
   const ringProgress = hideWorkClock ? 0 : session.progress
   const roundText =
     segment.round && segment.totalRounds
-      ? `Round ${segment.round}/${segment.totalRounds}`
+      ? `${segment.roundKind === 'set' ? 'Set' : 'Round'} ${segment.round}/${segment.totalRounds}`
       : undefined
   const phaseText =
     kind === 'work' && workoutType === 'emom'

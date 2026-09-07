@@ -50,6 +50,7 @@ type ExerciseRow = {
   target: string | null
   bell: string | null
   notes: string[] | null
+  sets: number | null
 }
 
 type ProgramRow = {
@@ -78,6 +79,7 @@ function toExercise(row: ExerciseRow): Exercise {
     target: row.target ?? undefined,
     bell: row.bell ?? undefined,
     notes: row.notes ?? [],
+    sets: row.sets ?? undefined,
     glossaryId: row.glossary_id ?? undefined,
   }
 }
@@ -195,7 +197,7 @@ export async function loadWorkouts(): Promise<Session[]> {
   const { data: exercises, error: exerciseError } = ids.length
     ? await client
         .from('workout_exercises')
-        .select('workout_id, glossary_id, name, sort, work_sec, rest_sec, reps, target, bell, notes')
+        .select('workout_id, glossary_id, name, sort, work_sec, rest_sec, reps, target, bell, notes, sets')
         .in('workout_id', ids)
     : { data: [], error: null }
   if (exerciseError) throw exerciseError
@@ -242,6 +244,7 @@ export async function saveWorkout(input: {
         target: exercise.target ?? null,
         bell: exercise.bell ?? null,
         notes: exercise.notes,
+        sets: exercise.sets ?? null,
       })),
     )
     if (insertError) throw insertError
@@ -257,6 +260,7 @@ export async function saveWorkout(input: {
     target: exercise.target ?? null,
     bell: exercise.bell ?? null,
     notes: exercise.notes,
+    sets: exercise.sets ?? null,
   })))
 }
 
@@ -289,7 +293,7 @@ export async function loadPrograms(glossary: GlossaryEntry[]): Promise<Program[]
     client.from('workouts').select('id, user_id, name, rounds, type, types, round_rest_sec, is_builtin, is_public'),
     client
       .from('workout_exercises')
-      .select('workout_id, glossary_id, name, sort, work_sec, rest_sec, reps, target, bell, notes'),
+      .select('workout_id, glossary_id, name, sort, work_sec, rest_sec, reps, target, bell, notes, sets'),
     ownerIds.length
       ? client.from('profiles').select('id, display_name').in('id', ownerIds)
       : Promise.resolve({ data: [] as { id: string; display_name: string | null }[], error: null }),

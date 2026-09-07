@@ -4,6 +4,7 @@ import {
   estimateSessionSeconds,
   exerciseLine,
   formatMinutes,
+  isStraightSets,
   playableTypes,
   workoutTypeLabel,
 } from '../timeline.ts'
@@ -15,6 +16,9 @@ import {
   leftoverLine,
   monthLabel,
   programEyebrow,
+  abCycleWeek,
+  scheduleForAbCycle,
+  usesAbAlternation,
 } from '../programs.ts'
 import type {
   Program,
@@ -180,15 +184,15 @@ function SessionCard({
     mode,
   )
   const type = effectiveType(session, mode)
+  const meta = isStraightSets(session)
+    ? `${session.exercises.length} lifts · ${formatMinutes(seconds)}`
+    : `${workoutTypeLabel(type)} · ${session.rounds} rounds · ${session.exercises.length} moves · ${formatMinutes(seconds)}`
   return (
     <article className={featured ? 'session-card is-current' : 'session-card'}>
       <header>
         <div>
           <h2>{session.name}</h2>
-          <p className="session-meta">
-            {workoutTypeLabel(type)} · {session.rounds} rounds ·{' '}
-            {session.exercises.length} moves · {formatMinutes(seconds)}
-          </p>
+          <p className="session-meta">{meta}</p>
         </div>
         {done ? (
           <span className="badge">Completed</span>
@@ -282,7 +286,12 @@ export function ProgramScreen({
     ? progress.currentMonth
     : (phases[0]?.month ?? 1)
   const phase = phases.find((item) => item.month === month) ?? phases[0]
-  const view = phase ? viewForPhase(program, phase) : program
+  const baseView = phase ? viewForPhase(program, phase) : program
+  const cycleWeek = usesAbAlternation(baseView.schedule) ? abCycleWeek(progress) : 1
+  const view = {
+    ...baseView,
+    schedule: scheduleForAbCycle(baseView.schedule, started ? cycleWeek : 1),
+  }
   const doneIds = new Set(doneSessionIds)
   const todayRow = todaysRow(view)
   const featured =
@@ -301,6 +310,9 @@ export function ProgramScreen({
     ? [
         multiMonth ? monthLabel(program, month) : undefined,
         multiMonth ? `Week ${week}` : undefined,
+        !multiMonth && started && usesAbAlternation(baseView.schedule)
+          ? `Week ${cycleWeek}`
+          : undefined,
         !multiMonth && view.schedule.length ? `${view.schedule.length} days a week` : undefined,
         owner,
       ]

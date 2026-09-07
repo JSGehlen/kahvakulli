@@ -214,7 +214,7 @@ function parseWarmup(body: string): Warmup {
 
 function parseMetaValue(line: string): { key: string; value: string } | undefined {
   const match = line.match(
-    /^(work|rest|suggested\s+bell|bell|notes?|reps?|target)\s*:\s*(.+)$/i,
+    /^(work|rest|sets?|suggested\s+bell|bell|notes?|reps?|target)\s*:\s*(.+)$/i,
   )
   if (!match) return undefined
   const key = match[1].toLowerCase().replace(/\s+/g, ' ')
@@ -229,7 +229,7 @@ function parseSession(name: string, body: string): Session {
 
   const push = () => {
     if (!current) return
-    if (!current.workSec) current.workSec = 30
+    if (current.workSec <= 0 && !current.reps) current.workSec = 30
     if (current.restSec < 0) current.restSec = 30
     exercises.push(current)
     current = undefined
@@ -264,11 +264,20 @@ function parseSession(name: string, body: string): Session {
     if (meta) {
       if (meta.key === 'work') current.workSec = parseDurationToSeconds(meta.value) ?? current.workSec
       else if (meta.key === 'rest') current.restSec = parseDurationToSeconds(meta.value) ?? 0
-      else if (meta.key === 'bell' || meta.key === 'suggested bell') current.bell = meta.value
-      else if (meta.key === 'rep' || meta.key === 'reps') {
+      else if (meta.key === 'set' || meta.key === 'sets') {
         const count = Number(meta.value.match(/\d+/)?.[0])
-        if (count) current.reps = count
-        else current.target = meta.value
+        if (count) current.sets = count
+      } else if (meta.key === 'bell' || meta.key === 'suggested bell') current.bell = meta.value
+      else if (meta.key === 'rep' || meta.key === 'reps') {
+        const range = meta.value.match(/(\d+)\s*[–-]\s*(\d+)/)
+        if (range) {
+          current.reps = Number(range[2])
+          if (!current.target) current.target = `${range[1]}–${range[2]}`
+        } else {
+          const count = Number(meta.value.match(/\d+/)?.[0])
+          if (count) current.reps = count
+          else current.target = meta.value
+        }
       } else if (meta.key === 'target') current.target = meta.value
       else current.notes.push(meta.value)
       continue

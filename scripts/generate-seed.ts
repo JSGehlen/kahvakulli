@@ -25,13 +25,16 @@ function sql(value: unknown): string {
   return `'${String(value).replaceAll("'", "''")}'`
 }
 
-function loadMarkdownMonths(): Program[] {
+function loadMarkdownPrograms(): Program[] {
   const dir = join(root, 'workouts')
   return readdirSync(dir)
     .filter((file) => file.endsWith('.md'))
     .map((file) => parseWorkoutMarkdown(readFileSync(join(dir, file), 'utf8'), file))
     .filter((program) => program.sessions.length > 0)
-    .sort((a, b) => monthNumber(a) - monthNumber(b))
+}
+
+function isBeginnerMonth(program: Program): boolean {
+  return /^level-\d+\.md$/i.test(program.sourceFile)
 }
 
 function monthNumber(program: Program): number {
@@ -60,9 +63,53 @@ function unique(items: string[]): string[] {
   return [...new Set(items)]
 }
 
+function emomOk(session: Program['sessions'][number]): boolean {
+  return (
+    session.exercises.length > 0 &&
+    session.exercises.every((exercise) => Boolean(exercise.reps)) &&
+    session.exercises.some((exercise) => exercise.workSec > 0)
+  )
+}
+
+function insertWorkouts(
+  statements: string[],
+  glossary: GlossaryEntry[],
+  programId: string,
+  monthProgram: Program,
+  month: number,
+) {
+  monthProgram.sessions.forEach((session, sessionIndex) => {
+    const workoutId = idFor('workout', `${monthProgram.sourceFile}:${session.name}`)
+    const typesSql = emomOk(session)
+      ? `ARRAY['regular', 'emom']::text[]`
+      : `ARRAY['regular']::text[]`
+    statements.push(
+      `insert into public.workouts (id, user_id, name, rounds, type, types, round_rest_sec, is_builtin, is_public) values (${sql(workoutId)}, null, ${sql(session.name)}, ${session.rounds}, 'regular', ${typesSql}, 0, true, true);`,
+    )
+    statements.push(
+      `insert into public.program_workouts (program_id, workout_id, sort, month) values (${sql(programId)}, ${sql(workoutId)}, ${month * 10 + sessionIndex}, ${month});`,
+    )
+    session.exercises.forEach((exercise, sort) => {
+      const matched = matchGlossary(exercise.name, glossary)
+      const timed = exercise.workSec > 0
+      statements.push(
+        `insert into public.workout_exercises (workout_id, glossary_id, name, sort, work_sec, rest_sec, reps, target, bell, notes, sets) values (${sql(workoutId)}, ${sql(matched?.id ?? null)}, ${sql(exercise.name)}, ${sort}, ${timed ? exercise.workSec : 0}, ${exercise.restSec}, ${sql(exercise.reps ?? null)}, ${sql(exercise.target ?? null)}, ${sql(exercise.bell ?? null)}, ${sql(exercise.notes)}, ${sql(exercise.sets ?? null)});`,
+      )
+    })
+  })
+  for (const row of monthProgram.schedule) {
+    const workoutId = idFor('workout', `${monthProgram.sourceFile}:${row.workout}`)
+    statements.push(
+      `insert into public.program_schedule (program_id, day, workout_id, month) values (${sql(programId)}, ${sql(row.day)}, ${sql(workoutId)}, ${month});`,
+    )
+  }
+}
+
 function buildSeed() {
-  const months = loadMarkdownMonths()
-  const glossary = mergeGlossary(months)
+  const parsed = loadMarkdownPrograms()
+  const beginnerMonths = parsed.filter(isBeginnerMonth).sort((a, b) => monthNumber(a) - monthNumber(b))
+  const others = parsed.filter((program) => !isBeginnerMonth(program))
+  const glossary = mergeGlossary(parsed)
   const statements: string[] = [
     '-- Generated from workouts/*.md. Re-run with `npm run seed`.',
     'truncate table public.program_progress, public.week_progress, public.program_schedule, public.program_workouts, public.workout_exercises, public.workouts, public.programs, public.glossary_entries restart identity cascade;',
@@ -74,47 +121,34 @@ function buildSeed() {
     )
   }
 
-  const programId = idFor('program', 'beginner-3-month')
-  const phases = months.map((month) => ({
-    month: monthNumber(month),
-    name: month.stage ?? `Month ${monthNumber(month)}`,
-    focus: month.focus,
-  }))
-
-  statements.push(
-    `insert into public.programs (id, user_id, title, stage, duration, difficulty, focus, equipment, warmup, phases, is_builtin, is_public, sort) values (${sql(programId)}, null, ${sql('Beginner 3 month program')}, null, ${sql('3 months')}, ${sql('Beginner')}, null, ${sql(unique(months.flatMap((month) => month.equipment)))}, ${sql(months[0]?.warmup ?? null)}::jsonb, ${sql(phases)}::jsonb, true, true, 0);`,
-  )
-
-  months.forEach((monthProgram) => {
-    const month = monthNumber(monthProgram)
-    monthProgram.sessions.forEach((session, sessionIndex) => {
-      const workoutId = idFor('workout', `${monthProgram.sourceFile}:${session.name}`)
-      const emomOk =
-        session.exercises.length > 0 &&
-        session.exercises.every((exercise) => Boolean(exercise.reps))
-      const typesSql = emomOk
-        ? `ARRAY['regular', 'emom']::text[]`
-        : `ARRAY['regular']::text[]`
-      statements.push(
-        `insert into public.workouts (id, user_id, name, rounds, type, types, round_rest_sec, is_builtin, is_public) values (${sql(workoutId)}, null, ${sql(session.name)}, ${session.rounds}, 'regular', ${typesSql}, 0, true, true);`,
-      )
-      statements.push(
-        `insert into public.program_workouts (program_id, workout_id, sort, month) values (${sql(programId)}, ${sql(workoutId)}, ${month * 10 + sessionIndex}, ${month});`,
-      )
-      session.exercises.forEach((exercise, sort) => {
-        const matched = matchGlossary(exercise.name, glossary)
-        const timed = exercise.workSec > 0
-        statements.push(
-          `insert into public.workout_exercises (workout_id, glossary_id, name, sort, work_sec, rest_sec, reps, target, bell, notes) values (${sql(workoutId)}, ${sql(matched?.id ?? null)}, ${sql(exercise.name)}, ${sort}, ${timed ? exercise.workSec : 0}, ${exercise.restSec}, ${sql(exercise.reps ?? null)}, ${sql(exercise.target ?? null)}, ${sql(exercise.bell ?? null)}, ${sql(exercise.notes)});`,
-        )
-      })
+  if (beginnerMonths.length > 0) {
+    const programId = idFor('program', 'beginner-3-month')
+    const phases = beginnerMonths.map((month) => ({
+      month: monthNumber(month),
+      name: month.stage ?? `Month ${monthNumber(month)}`,
+      focus: month.focus,
+    }))
+    statements.push(
+      `insert into public.programs (id, user_id, title, stage, duration, difficulty, focus, equipment, warmup, phases, is_builtin, is_public, sort) values (${sql(programId)}, null, ${sql('Beginner 3 month program')}, null, ${sql('3 months')}, ${sql('Beginner')}, null, ${sql(unique(beginnerMonths.flatMap((month) => month.equipment)))}, ${sql(beginnerMonths[0]?.warmup ?? null)}::jsonb, ${sql(phases)}::jsonb, true, true, 0);`,
+    )
+    beginnerMonths.forEach((monthProgram) => {
+      insertWorkouts(statements, glossary, programId, monthProgram, monthNumber(monthProgram))
     })
-    for (const row of monthProgram.schedule) {
-      const workoutId = idFor('workout', `${monthProgram.sourceFile}:${row.workout}`)
-      statements.push(
-        `insert into public.program_schedule (program_id, day, workout_id, month) values (${sql(programId)}, ${sql(row.day)}, ${sql(workoutId)}, ${month});`,
-      )
-    }
+  }
+
+  others.forEach((program, index) => {
+    const programId = idFor('program', program.sourceFile.replace(/\.md$/i, ''))
+    const phases = [
+      {
+        month: 1,
+        name: program.stage ?? program.title,
+        focus: program.focus,
+      },
+    ]
+    statements.push(
+      `insert into public.programs (id, user_id, title, stage, duration, difficulty, focus, equipment, warmup, phases, is_builtin, is_public, sort) values (${sql(programId)}, null, ${sql(program.title)}, ${sql(program.stage ?? null)}, ${sql(program.duration ?? null)}, ${sql(program.difficulty ?? null)}, ${sql(program.focus ?? null)}, ${sql(program.equipment)}, ${sql(program.warmup ?? null)}::jsonb, ${sql(phases)}::jsonb, true, true, ${index + 1});`,
+    )
+    insertWorkouts(statements, glossary, programId, program, 1)
   })
 
   return `${statements.join('\n')}\n`

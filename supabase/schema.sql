@@ -64,8 +64,11 @@ create table if not exists public.workout_exercises (
   reps integer,
   target text,
   bell text,
-  notes text[] not null default '{}'
+  notes text[] not null default '{}',
+  sets integer
 );
+
+alter table public.workout_exercises add column if not exists sets integer;
 
 create table if not exists public.programs (
   id uuid primary key default gen_random_uuid(),

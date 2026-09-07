@@ -32,6 +32,14 @@ export function usesReps(exercise: Exercise): boolean {
   return Boolean(exercise.reps) && !(exercise.workSec > 0)
 }
 
+export function isStraightSets(session: Session): boolean {
+  return session.exercises.some((exercise) => (exercise.sets ?? 0) > 0)
+}
+
+function setCount(exercise: Exercise, session: Session): number {
+  return Math.max(1, exercise.sets ?? session.rounds)
+}
+
 export function effectiveType(
   session: Session,
   playAs: SessionMode = 'regular',
@@ -51,6 +59,17 @@ export function exerciseLine(
   playAs: SessionMode = 'regular',
 ): string {
   const type = effectiveType(session, playAs)
+  if (exercise.sets) {
+    const dose = exercise.target ?? (exercise.reps ? `${exercise.reps} reps` : undefined)
+    return [
+      dose ? `${exercise.sets} × ${dose}` : `${exercise.sets} sets`,
+      exercise.workSec > 0 && !exercise.target ? `${exercise.workSec}s` : undefined,
+      exercise.restSec > 0 ? `${exercise.restSec}s rest` : undefined,
+      exercise.bell,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }
   if (type === 'emom') {
     return [exercise.reps ? `${exercise.reps} reps` : exercise.target, 'On the minute', exercise.bell]
       .filter(Boolean)
@@ -83,6 +102,19 @@ export function estimateSessionSeconds(
 
   if (type === 'emom') {
     return total + session.rounds * session.exercises.length * 60
+  }
+
+  if (isStraightSets(session)) {
+    session.exercises.forEach((exercise, index) => {
+      const sets = setCount(exercise, session)
+      const lastExercise = index === session.exercises.length - 1
+      for (let set = 1; set <= sets; set += 1) {
+        const last = lastExercise && set === sets
+        if (!usesReps(exercise)) total += exercise.workSec
+        if (!last) total += Math.max(exercise.restSec, 0)
+      }
+    })
+    return total
   }
 
   for (let round = 1; round <= session.rounds; round += 1) {
@@ -227,6 +259,53 @@ export function buildTimeline(
   }
 
   const lastRest = circuitRest(session)
+
+  if (isStraightSets(session) && type !== 'emom' && type !== 'circuit') {
+    session.exercises.forEach((exercise, index) => {
+      const sets = setCount(exercise, session)
+      const nextExercise = session.exercises[index + 1]
+      const timed = !usesReps(exercise)
+      for (let set = 1; set <= sets; set += 1) {
+        const last = index === session.exercises.length - 1 && set === sets
+        const nextTitle = last
+          ? undefined
+          : set < sets
+            ? `Rest ${exercise.restSec}s`
+            : nextExercise?.name
+        segments.push(
+          baseWork(
+            exercise,
+            program,
+            set,
+            sets,
+            index,
+            totalExercises,
+            `Set ${set}/${sets}`,
+            nextTitle,
+            timed
+              ? { durationSec: exercise.workSec, roundKind: 'set' }
+              : { durationSec: 0, awaitComplete: true, roundKind: 'set' },
+          ),
+        )
+        if (!last && exercise.restSec > 0) {
+          segments.push({
+            kind: 'rest',
+            title: 'Breathe',
+            subtitle: `Set ${set}/${sets}`,
+            durationSec: Math.max(exercise.restSec, 0),
+            round: set,
+            totalRounds: sets,
+            roundKind: 'set',
+            exerciseIndex: index + 1,
+            totalExercises,
+            nextTitle: set < sets ? exercise.name : nextExercise?.name ?? 'Next',
+            glossaryName: set < sets ? exercise.name : nextExercise?.name,
+          })
+        }
+      }
+    })
+    return segments
+  }
 
   for (let round = 1; round <= session.rounds; round += 1) {
     session.exercises.forEach((exercise, index) => {
