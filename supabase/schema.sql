@@ -121,14 +121,22 @@ create table if not exists public.program_progress (
   current_month integer not null default 1 check (current_month >= 1),
   completions jsonb not null default '{}'::jsonb,
   started_at timestamptz,
+  month_started_at timestamptz,
   updated_at timestamptz not null default now(),
   primary key (user_id, program_id)
 );
 
 alter table public.program_progress add column if not exists started_at timestamptz;
+alter table public.program_progress add column if not exists month_started_at timestamptz;
 update public.program_progress
 set started_at = coalesce(started_at, updated_at, now())
 where started_at is null;
+update public.program_progress
+set month_started_at = started_at
+where month_started_at is null and current_month = 1;
+update public.program_progress
+set month_started_at = coalesce(updated_at, started_at)
+where month_started_at is null and current_month > 1;
 
 alter table public.profiles enable row level security;
 alter table public.glossary_entries enable row level security;

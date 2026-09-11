@@ -15,6 +15,7 @@ import {
   isStarted,
   leftoverLine,
   monthLabel,
+  monthWeekHasStarted,
   programEyebrow,
   abCycleWeek,
   scheduleForAbCycle,
@@ -125,12 +126,12 @@ function weekRows(program: Program): WeekRow[] {
   })
 }
 
-function rowStatus(row: WeekRow, done: boolean): WeekStatus | undefined {
+function rowStatus(row: WeekRow, done: boolean, canMiss: boolean): WeekStatus | undefined {
   const isToday = row.day.toLowerCase() === weekday.toLowerCase()
   if (row.rest) return isToday ? 'today' : undefined
   if (done) return 'done'
   if (isToday) return 'today'
-  if (weekOrder(row.day) < weekOrder(weekday)) return 'missed'
+  if (weekOrder(row.day) < weekOrder(weekday)) return canMiss ? 'missed' : undefined
   return 'upcoming'
 }
 
@@ -141,8 +142,13 @@ function statusLabel(status: WeekStatus): string {
   return 'Upcoming'
 }
 
-function sessionMissed(program: Program, session: Session, done: boolean): boolean {
-  if (done) return false
+function sessionMissed(
+  program: Program,
+  session: Session,
+  done: boolean,
+  canMiss: boolean,
+): boolean {
+  if (!canMiss || done) return false
   const row = program.schedule.find((item) => item.workout === session.name)
   if (!row) return false
   return weekOrder(row.day) < weekOrder(weekday)
@@ -293,6 +299,7 @@ export function ProgramScreen({
     schedule: scheduleForAbCycle(baseView.schedule, started ? cycleWeek : 1),
   }
   const doneIds = new Set(doneSessionIds)
+  const canMiss = started && monthWeekHasStarted(progress)
   const todayRow = todaysRow(view)
   const featured =
     started && todayRow ? sessionForRow(view, todayRow) : undefined
@@ -309,7 +316,7 @@ export function ProgramScreen({
   const statusLine = started
     ? [
         multiMonth ? monthLabel(program, month) : undefined,
-        multiMonth ? `Week ${week}` : undefined,
+        multiMonth && week ? `Week ${week}` : undefined,
         !multiMonth && started && usesAbAlternation(baseView.schedule)
           ? `Week ${cycleWeek}`
           : undefined,
@@ -401,7 +408,7 @@ export function ProgramScreen({
                 ? view.sessions.find((item) => item.name === row.workout)
                 : undefined
               const dayStatus = started
-                ? rowStatus(row, Boolean(session && doneIds.has(session.id)))
+                ? rowStatus(row, Boolean(session && doneIds.has(session.id)), canMiss)
                 : undefined
               const isToday = row.day.toLowerCase() === weekday.toLowerCase()
               const label = [
@@ -456,7 +463,7 @@ export function ProgramScreen({
             mode={mode}
             featured
             done={doneIds.has(featured.id)}
-            missed={sessionMissed(view, featured, doneIds.has(featured.id))}
+            missed={sessionMissed(view, featured, doneIds.has(featured.id), canMiss)}
             canStart={started}
             onStart={onStart}
           />
@@ -476,7 +483,7 @@ export function ProgramScreen({
             mode={mode}
             featured={false}
             done={doneIds.has(session.id)}
-            missed={sessionMissed(view, session, doneIds.has(session.id))}
+            missed={sessionMissed(view, session, doneIds.has(session.id), canMiss)}
             canStart={started}
             onStart={onStart}
           />

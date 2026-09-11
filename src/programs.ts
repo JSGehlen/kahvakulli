@@ -42,12 +42,37 @@ export function calendarProgramWeek(startedAt: string, now = new Date()): number
 }
 
 function weekInMonth(progress: ProgramProgress, now = new Date()): number {
-  if (!progress.startedAt) return 1
-  return calendarProgramWeek(progress.startedAt, now) - (progress.currentMonth - 1) * MONTH_WEEKS
+  const origin = monthWeekOrigin(progress)
+  if (!origin) return 1
+  const current = mondayDate(now)
+  if (current.getTime() < origin.getTime()) return 0
+  const days = Math.round((current.getTime() - origin.getTime()) / 86_400_000)
+  return Math.floor(days / 7) + 1
+}
+
+/** Monday Week 1 of the current month begins. Later months wait until the next Monday if you proceed mid-week. */
+export function monthWeekOrigin(progress: ProgramProgress): Date | undefined {
+  const stamp =
+    progress.currentMonth > 1
+      ? (progress.monthStartedAt ?? progress.startedAt)
+      : progress.startedAt
+  if (!stamp) return undefined
+  const started = new Date(stamp)
+  const monday = mondayDate(started)
+  if (progress.currentMonth <= 1 || started.getDay() === 1) return monday
+  const next = new Date(monday)
+  next.setDate(next.getDate() + 7)
+  return next
+}
+
+export function monthWeekHasStarted(progress: ProgramProgress, now = new Date()): boolean {
+  return weekInMonth(progress, now) >= 1
 }
 
 export function currentWeek(progress: ProgramProgress, now = new Date()): number {
-  return Math.min(MONTH_WEEKS, Math.max(1, weekInMonth(progress, now)))
+  const raw = weekInMonth(progress, now)
+  if (raw < 1) return 0
+  return Math.min(MONTH_WEEKS, raw)
 }
 
 export function usesAbAlternation(schedule: { workout?: string }[]): boolean {

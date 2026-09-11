@@ -488,7 +488,7 @@ export async function loadProgramProgress(
   const client = requireClient()
   const { data, error } = await client
     .from('program_progress')
-    .select('program_id, current_month, completions, started_at')
+    .select('program_id, current_month, completions, started_at, month_started_at')
     .eq('user_id', userId)
   if (error) throw error
   const byProgram: Record<string, ProgramProgress> = {}
@@ -497,6 +497,7 @@ export async function loadProgramProgress(
       currentMonth: Math.max(1, Number(row.current_month) || 1),
       completions: toCompletions(row.completions),
       startedAt: row.started_at ?? undefined,
+      monthStartedAt: row.month_started_at ?? undefined,
     }
   }
   return byProgram
@@ -523,7 +524,7 @@ export async function markWorkoutDone(
 
   const { data: progressRow, error: progressError } = await client
     .from('program_progress')
-    .select('current_month, completions, started_at')
+    .select('current_month, completions, started_at, month_started_at')
     .eq('user_id', userId)
     .eq('program_id', programId)
     .maybeSingle()
@@ -540,6 +541,8 @@ export async function markWorkoutDone(
     current_month: currentMonth,
     completions,
     started_at: progressRow?.started_at ?? new Date().toISOString(),
+    month_started_at:
+      progressRow?.month_started_at ?? progressRow?.started_at ?? new Date().toISOString(),
     updated_at: new Date().toISOString(),
   })
   if (upsertError) throw upsertError
@@ -563,6 +566,7 @@ export async function startProgram(
     current_month: 1,
     completions: {},
     started_at: now,
+    month_started_at: now,
     updated_at: now,
   })
   if (error) throw error
@@ -601,7 +605,7 @@ export async function advanceProgramMonth(
   const weekStart = mondayKey()
   const { data: progressRow, error: readError } = await client
     .from('program_progress')
-    .select('started_at')
+    .select('started_at, month_started_at')
     .eq('user_id', userId)
     .eq('program_id', programId)
     .maybeSingle()
@@ -612,6 +616,7 @@ export async function advanceProgramMonth(
     current_month: nextMonth,
     completions: {},
     started_at: progressRow?.started_at ?? new Date().toISOString(),
+    month_started_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   })
   if (error) throw error

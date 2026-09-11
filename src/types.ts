@@ -90,6 +90,7 @@ export type ProgramProgress = {
   currentMonth: number
   completions: Record<string, number>
   startedAt?: string
+  monthStartedAt?: string
 }
 
 export type Profile = {
