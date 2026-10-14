@@ -382,6 +382,13 @@ h2 {
   line-height: 1.4;
 }
 
+.progression-note {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .equipment-line {
   margin: 0 0 16px;
   color: var(--muted);

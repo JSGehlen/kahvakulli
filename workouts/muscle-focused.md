@@ -6,6 +6,7 @@ Equipment
 * 1 × 16 kg kettlebell
 * 1 × 20 kg kettlebell
 
+Duration: 12 weeks
 Difficulty: Intermediate
 Focus: Build and retain muscle while losing fat.
 Name: Muscle
@@ -15,7 +16,7 @@ Weekly Schedule
 Day	Workout
 Monday	Workout A
 Wednesday	Workout B
-Friday	Workout A
+Friday	Workout C
 
 ---
 
@@ -35,7 +36,7 @@ Workout A
     * Sets: 3
     * Reps: 8–15
     * Rest: 90 seconds
-    * Suggested bell: 16 kg
+    * Suggested bell: 20 kg
     * Notes: Controlled descent. Drive up hard.
 2. Single Arm Row
     * Sets: 3
@@ -48,6 +49,7 @@ Workout A
     * Sets: 3
     * Reps: 8–15
     * Rest: 90 seconds
+    * Suggested bell: BW / 12–16 kg
     * Notes: Full push-ups, or one-arm floor press per side
 4. Single-Leg or B-Stance Romanian Deadlift
     * Sets: 3
@@ -61,7 +63,7 @@ Workout A
     * Work: 90 seconds
     * Rest: 90 seconds
     * Target: 30–60s each side
-    * Suggested bell: 16–20 kg
+    * Suggested bell: 20 kg
     * Notes: Heaviest bell you can hold without leaning
 
 ---
@@ -81,7 +83,7 @@ Workout B
     * Target: 6–10 per side
     * Rest: 90 seconds
     * Suggested bell: 12 kg
-    * Notes: Brace before pressing. Do not rush to 20 kg.
+    * Notes: Brace before pressing. Avoid loaded left-arm reps that cause loss of control, and have the shoulder assessed before progressing. Do not rush to 20 kg.
 3. Single Arm Row
     * Sets: 3
     * Reps: 8–15
@@ -115,6 +117,7 @@ Workout C
     * Sets: 3
     * Reps: 8–15
     * Rest: 90 seconds
+    * Suggested bell: BW / 12–16 kg
 3. Single Arm Row
     * Sets: 3
     * Reps: 10–15
@@ -125,13 +128,13 @@ Workout C
     * Sets: 5
     * Reps: 10
     * Rest: 60 seconds
-    * Suggested bell: 16 kg
+    * Suggested bell: 16–20 kg
 5. Suitcase March
     * Sets: 3
     * Work: 90 seconds
     * Rest: 90 seconds
     * Target: 30–45s each side
-    * Suggested bell: 16–20 kg
+    * Suggested bell: 20 kg
 
 ---
 
@@ -280,10 +283,14 @@ Suitcase March
 Quick Weight Reference
 
 Exercise	Suggested Bell
-Goblet Squat	16 kg
+Goblet Squat (A)	20 kg
+Goblet Squat (C)	16 kg
 Single Arm Row	16 kg
+Push Up or Floor Press	BW / 12–16 kg
 Reverse Lunge	12–16 kg
 Clean & Press	12 kg
 Romanian Deadlift	16 kg
-Kettlebell Swing	16 kg
-Suitcase Hold	16–20 kg
+Kettlebell Swing (B)	16 kg
+Kettlebell Swing (C)	16–20 kg
+Suitcase Hold or Carry	20 kg
+Suitcase March	20 kg

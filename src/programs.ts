@@ -1,6 +1,6 @@
 import { displayTitle, sequenceIndex } from './loadWorkouts.ts'
 import { mondayKey } from './persist.ts'
-import type { Program, ProgramProgress } from './types.ts'
+import type { Exercise, Program, ProgramProgress, ScheduleRow, Session } from './types.ts'
 
 export { displayTitle, sequenceIndex, levelLabel } from './loadWorkouts.ts'
 
@@ -31,6 +31,107 @@ function mondayDate(date: Date): Date {
   const key = mondayKey(date)
   const [year, month, day] = key.split('-').map(Number)
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1)
+}
+
+const DOSE_RANGE =
+  /^(\d+)\s*[–—-]\s*(\d+)\s*(seconds?|secs?|s)?\b\s*(.*)$/i
+
+/** Programs that step through a rep range across the whole block, such as Muscle. */
+export function progressionWeeks(program: Program): number | undefined {
+  const match = program.duration?.match(/(\d+)\s*weeks\b/i)
+  if (match) return Number(match[1])
+  if (/^muscle$/i.test(program.stage ?? '') || /muscle-focused/i.test(program.title)) return 12
+  return undefined
+}
+
+/** 1-based week used to pick a single rep count. Week 1 before the program starts. */
+export function prescriptionWeek(
+  program: Program,
+  progress: ProgramProgress,
+  now = new Date(),
+): number {
+  const total = progressionWeeks(program)
+  if (!total) return 0
+  if (!progress.startedAt) return 1
+  return calendarProgramWeek(progress.startedAt, now)
+}
+
+export function progressionWeekLabel(week: number, totalWeeks: number): string {
+  if (week <= totalWeeks) return `Week ${week} of ${totalWeeks}`
+  return `Week ${week}`
+}
+
+function doseForWeek(low: number, high: number, week: number, totalWeeks: number, timed: boolean): number {
+  const block = Math.max(1, Math.round(totalWeeks / 3))
+  if (week <= block) return low
+  if (week <= block * 2) {
+    const mid = (low + high) / 2
+    return timed ? Math.round(mid / 5) * 5 : Math.round(mid)
+  }
+  return high
+}
+
+/** Turn "8–15 per side" into the count for this week. Fixed doses stay as written. */
+export function prescribeExercise(exercise: Exercise, week: number, totalWeeks: number): Exercise {
+  if (week < 1 || totalWeeks < 1 || !exercise.target) return exercise
+  const match = exercise.target.match(DOSE_RANGE)
+  if (!match) return exercise
+  const low = Number(match[1])
+  const high = Number(match[2])
+  const timed = Boolean(match[3])
+  const suffix = (match[4] ?? '').trim()
+  const value = doseForWeek(low, high, week, totalWeeks, timed)
+  const target = `${value}${timed ? 's' : ''}${suffix ? ` ${suffix}` : ''}`
+  return {
+    ...exercise,
+    target,
+    reps: !timed && exercise.reps != null ? value : exercise.reps,
+  }
+}
+
+export function prescribeSession(session: Session, week: number, totalWeeks: number): Session {
+  if (week < 1 || totalWeeks < 1) return session
+  return {
+    ...session,
+    exercises: session.exercises.map((exercise) => prescribeExercise(exercise, week, totalWeeks)),
+  }
+}
+
+/** Drop a dose that only repeats the big rep count, keeping "per side" and similar. */
+export function prescriptionDetail(target: string | undefined, reps: number | undefined): string | undefined {
+  if (!target) return undefined
+  if (reps == null) return target
+  if (target === String(reps) || target === `${reps} reps`) return undefined
+  if (target.startsWith(String(reps))) {
+    const rest = target.slice(String(reps).length).replace(/^s?\s*/, '').trim()
+    return rest || undefined
+  }
+  return target
+}
+
+export function progressionNote(totalWeeks: number): string {
+  const block = Math.max(1, Math.round(totalWeeks / 3))
+  const midEnd = block * 2
+  return `Weeks 1–${block} use the lower end of each range, ${block + 1}–${midEnd} the middle, and ${midEnd + 1}–${totalWeeks} the upper end. Add weight when every set reaches the top comfortably.`
+}
+
+/**
+ * Muscle trains A / B / C on Monday, Wednesday, and Friday.
+ * Older seeds listed Friday as Workout A; use C when that session exists.
+ */
+export function alignMuscleSchedule(program: Program, schedule: ScheduleRow[]): ScheduleRow[] {
+  if (!progressionWeeks(program)) return schedule
+  if (!/^muscle$/i.test(program.stage ?? '') && !/muscle-focused/i.test(program.title)) return schedule
+  const names = new Set(program.sessions.map((session) => session.name))
+  for (const phase of program.phases) {
+    for (const session of phase.sessions) names.add(session.name)
+  }
+  if (!names.has('Workout C')) return schedule
+  return schedule.map((row) =>
+    row.day.toLowerCase() === 'friday' && row.workout === 'Workout A'
+      ? { ...row, workout: 'Workout C' }
+      : row,
+  )
 }
 
 /** 1-based week of the whole program, from the Monday of the week you started. */
