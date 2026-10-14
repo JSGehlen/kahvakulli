@@ -10,14 +10,20 @@ import {
 } from '../timeline.ts'
 import { displayTitle } from '../loadWorkouts.ts'
 import {
+  abCycleWeek,
+  alignMuscleSchedule,
   canAdvanceMonth,
   currentWeek,
   isStarted,
   leftoverLine,
   monthLabel,
   monthWeekHasStarted,
+  prescribeSession,
+  prescriptionWeek,
   programEyebrow,
-  abCycleWeek,
+  progressionNote,
+  progressionWeekLabel,
+  progressionWeeks,
   scheduleForAbCycle,
   usesAbAlternation,
 } from '../programs.ts'
@@ -293,10 +299,16 @@ export function ProgramScreen({
     : (phases[0]?.month ?? 1)
   const phase = phases.find((item) => item.month === month) ?? phases[0]
   const baseView = phase ? viewForPhase(program, phase) : program
-  const cycleWeek = usesAbAlternation(baseView.schedule) ? abCycleWeek(progress) : 1
+  const scheduled = alignMuscleSchedule(program, baseView.schedule)
+  const cycleWeek = usesAbAlternation(scheduled) ? abCycleWeek(progress) : 1
+  const totalWeeks = progressionWeeks(program) ?? 0
+  const doseWeek = totalWeeks ? prescriptionWeek(program, progress) : 0
   const view = {
     ...baseView,
-    schedule: scheduleForAbCycle(baseView.schedule, started ? cycleWeek : 1),
+    schedule: scheduleForAbCycle(scheduled, started ? cycleWeek : 1),
+    sessions: baseView.sessions.map((session) =>
+      totalWeeks ? prescribeSession(session, doseWeek, totalWeeks) : session,
+    ),
   }
   const doneIds = new Set(doneSessionIds)
   const canMiss = started && monthWeekHasStarted(progress)
@@ -316,8 +328,9 @@ export function ProgramScreen({
   const statusLine = started
     ? [
         multiMonth ? monthLabel(program, month) : undefined,
-        multiMonth && week ? `Week ${week}` : undefined,
-        !multiMonth && started && usesAbAlternation(baseView.schedule)
+        totalWeeks ? progressionWeekLabel(doseWeek, totalWeeks) : undefined,
+        multiMonth && week && !totalWeeks ? `Week ${week}` : undefined,
+        !multiMonth && started && !totalWeeks && usesAbAlternation(scheduled)
           ? `Week ${cycleWeek}`
           : undefined,
         !multiMonth && view.schedule.length ? `${view.schedule.length} days a week` : undefined,
@@ -325,7 +338,7 @@ export function ProgramScreen({
       ]
         .filter(Boolean)
         .join(' · ')
-    : owner
+    : [totalWeeks ? `${totalWeeks} weeks` : undefined, owner].filter(Boolean).join(' · ')
 
   const typeOptions = playableTypes(view.sessions)
   const showTypeChoice = started && typeOptions.length > 1
@@ -381,6 +394,7 @@ export function ProgramScreen({
       <h1>{displayTitle(program)}</h1>
       {multiMonth && phase?.name ? <p className="phase-name">{phase.name}</p> : null}
       {statusLine ? <p className="program-status">{statusLine}</p> : null}
+      {totalWeeks ? <p className="progression-note">{progressionNote(totalWeeks)}</p> : null}
       {program.equipment.length > 0 ? (
         <p className="equipment-line">
           Equipment: {program.equipment.map(formatEquipment).join(' · ')}
@@ -539,14 +553,20 @@ export function HomeScreen({
   const currentPhase =
     currentProgram?.phases.find((phase) => phase.month === currentMonth) ??
     currentProgram?.phases[0]
+  const totalWeeks = currentProgram ? (progressionWeeks(currentProgram) ?? 0) : 0
+  const programWeek =
+    started && currentProgram && currentProgress && totalWeeks
+      ? prescriptionWeek(currentProgram, currentProgress)
+      : undefined
   const week =
-    started && currentPhase && currentProgress
+    started && currentPhase && currentProgress && !totalWeeks
       ? currentWeek(currentProgress)
       : undefined
   const currentMeta =
     started && currentProgram
       ? [
           monthLabel(currentProgram, currentMonth),
+          programWeek ? progressionWeekLabel(programWeek, totalWeeks) : undefined,
           week ? `Week ${week}` : undefined,
         ]
           .filter(Boolean)

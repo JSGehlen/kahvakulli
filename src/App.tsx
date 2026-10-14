@@ -27,7 +27,14 @@ import {
   type RestoredTimer,
   type WeekProgress,
 } from './persist.ts'
-import { emptyProgramProgress, isStarted, splitProgramLists } from './programs.ts'
+import {
+  emptyProgramProgress,
+  isStarted,
+  prescribeSession,
+  prescriptionWeek,
+  progressionWeeks,
+  splitProgramLists,
+} from './programs.ts'
 import { AuthScreen } from './screens/AuthScreen.tsx'
 import { GlossaryScreen } from './screens/GlossaryScreen.tsx'
 import { HomeScreen, ProgramScreen } from './screens/HomeScreen.tsx'
@@ -357,7 +364,12 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
   }
 
   if (route.name === 'session' && session) {
-    const segments = buildTimeline(program, session, includeWarmup, mode)
+    const totalWeeks = progressionWeeks(program) ?? 0
+    const doseWeek = totalWeeks
+      ? prescriptionWeek(program, programProgress[program.id] ?? emptyProgramProgress())
+      : 0
+    const prescribed = totalWeeks ? prescribeSession(session, doseWeek, totalWeeks) : session
+    const segments = buildTimeline(program, prescribed, includeWarmup, mode)
     if (segments.length === 0) {
       clearSavedWorkout()
       return (

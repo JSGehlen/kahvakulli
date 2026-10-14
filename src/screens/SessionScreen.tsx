@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { matchGlossaryEntries } from '../parseWorkout.ts'
+import { prescriptionDetail } from '../programs.ts'
 import type { RestoredTimer } from '../persist.ts'
 import { formatClock } from '../timeline.ts'
 import type { GlossaryEntry, Segment, WorkoutType } from '../types.ts'
@@ -175,12 +176,13 @@ export function SessionScreen({
   const hideWorkClock =
     kind === 'work' && (awaiting || Boolean(segment.hideWorkClock))
   const dialTitle = emomResting ? 'Breathe' : segment.title
+  const dose = prescriptionDetail(segment.target, segment.reps)
   const dialDetail = emomResting
     ? undefined
     : hideWorkClock
-      ? [segment.target ?? (segment.reps ? 'reps' : undefined), segment.bell].filter(Boolean).join(' · ') ||
+      ? [dose ?? (segment.reps ? 'reps' : undefined), segment.bell].filter(Boolean).join(' · ') ||
         undefined
-      : [segment.target, segment.bell].filter(Boolean).join(' · ') || undefined
+      : [dose ?? segment.target, segment.bell].filter(Boolean).join(' · ') || undefined
   const showComplete =
     (workoutType === 'emom' && segment.kind === 'work' && !emomResting) ||
     (awaiting && kind === 'work')
