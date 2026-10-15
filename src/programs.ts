@@ -89,12 +89,31 @@ export function prescribeExercise(exercise: Exercise, week: number, totalWeeks: 
   }
 }
 
+function isCoreAbsSession(session: Session): boolean {
+  return /core\s*&\s*abs/i.test(session.name)
+}
+
+/** Workout C starts with 2 sets, then uses the counts written on each lift. */
 export function prescribeSession(session: Session, week: number, totalWeeks: number): Session {
   if (week < 1 || totalWeeks < 1) return session
+  const introSets = isCoreAbsSession(session) && week <= 2
   return {
     ...session,
-    exercises: session.exercises.map((exercise) => prescribeExercise(exercise, week, totalWeeks)),
+    exercises: session.exercises.map((exercise) => {
+      const prescribed = prescribeExercise(exercise, week, totalWeeks)
+      if (!introSets || prescribed.sets == null || prescribed.sets <= 2) return prescribed
+      return { ...prescribed, sets: 2 }
+    }),
   }
+}
+
+export function coreSetProgressionNote(program: Program): string | undefined {
+  const sessions = [
+    ...program.sessions,
+    ...program.phases.flatMap((phase) => phase.sessions),
+  ]
+  if (!sessions.some(isCoreAbsSession)) return undefined
+  return 'Workout C uses 2 sets of each move in weeks 1–2, then the full set counts from week 3.'
 }
 
 /** Drop a dose that only repeats the big rep count, keeping "per side" and similar. */
@@ -126,10 +145,11 @@ export function alignMuscleSchedule(program: Program, schedule: ScheduleRow[]): 
   for (const phase of program.phases) {
     for (const session of phase.sessions) names.add(session.name)
   }
-  if (!names.has('Workout C')) return schedule
+  const core = [...names].find((name) => /^workout\s+c\b/i.test(name))
+  if (!core) return schedule
   return schedule.map((row) =>
-    row.day.toLowerCase() === 'friday' && row.workout === 'Workout A'
-      ? { ...row, workout: 'Workout C' }
+    row.day.toLowerCase() === 'friday' && /^workout\s+a\b/i.test(row.workout)
+      ? { ...row, workout: core }
       : row,
   )
 }

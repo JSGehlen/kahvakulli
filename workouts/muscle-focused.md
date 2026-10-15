@@ -16,7 +16,7 @@ Weekly Schedule
 Day	Workout
 Monday	Workout A
 Wednesday	Workout B
-Friday	Workout C
+Friday	Workout C — Core & Abs
 
 ---
 
@@ -106,35 +106,46 @@ Workout B
 
 ---
 
-Workout C
+Workout C — Core & Abs
 
-1. Goblet Squat
+Friday · 25–35 minutes · 90 seconds rest between sets
+
+1. Kettlebell Glute Bridge
     * Sets: 3
-    * Reps: 10–15
+    * Reps: 12–15
     * Rest: 90 seconds
-    * Suggested bell: 16 kg
-2. Push Up or Floor Press
-    * Sets: 3
-    * Reps: 8–15
-    * Rest: 90 seconds
-    * Suggested bell: BW / 12–16 kg
-3. Single Arm Row
-    * Sets: 3
-    * Reps: 10–15
-    * Target: 10–15 per side
-    * Rest: 90 seconds
-    * Suggested bell: 16 kg
-4. Kettlebell Swing
-    * Sets: 5
-    * Reps: 10
-    * Rest: 60 seconds
-    * Suggested bell: 16–20 kg
-5. Suitcase March
-    * Sets: 3
-    * Work: 90 seconds
-    * Rest: 90 seconds
-    * Target: 30–45s each side
     * Suggested bell: 20 kg
+2. Kettlebell Weighted Crunch
+    * Sets: 3
+    * Reps: 8–12
+    * Rest: 90 seconds
+    * Suggested bell: Bodyweight–12 kg
+3. Kettlebell Around-the-Body Pass
+    * Sets: 2
+    * Reps: 10
+    * Target: 10/direction
+    * Rest: 90 seconds
+    * Suggested bell: 12 kg
+4. Kettlebell Side Bend
+    * Sets: 2
+    * Reps: 10
+    * Target: 10/side
+    * Rest: 90 seconds
+    * Suggested bell: 12 kg
+5. Kettlebell Plank Pull-Through
+    * Sets: 2
+    * Reps: 6
+    * Target: 6/side
+    * Rest: 90 seconds
+    * Suggested bell: 12 kg
+
+---
+
+Progression
+
+Period	Sets
+Weeks 1–2	2 sets of everything
+Week 3 onward	Full sets listed above
 
 ---
 
@@ -280,17 +291,67 @@ Suitcase March
 
 ---
 
+Kettlebell Glute Bridge
+
+1. Lie on your back, knees bent and feet flat.
+2. Hold the kettlebell securely across your hips.
+3. Push through your heels, raise your hips and squeeze your glutes.
+4. Lower slowly without arching your back.
+
+---
+
+Kettlebell Weighted Crunch
+
+1. Lie on your back with knees bent.
+2. Hold the kettlebell against your chest.
+3. Curl your shoulders and upper back slightly off the floor using your abs.
+4. Pause briefly and lower slowly.
+
+Don’t pull your neck or sit all the way up.
+
+---
+
+Kettlebell Around-the-Body Pass
+
+1. Stand tall, feet shoulder-width apart.
+2. Pass the kettlebell around your waist, switching hands behind and in front of your body.
+3. Keep your torso steady and avoid rotating your hips.
+4. Reverse direction after 10 complete circles.
+
+---
+
+Kettlebell Side Bend
+
+1. Stand upright with the kettlebell in one hand.
+2. Slowly bend sideways toward the kettlebell, keeping your hips still and chest facing forward.
+3. Use your obliques to return to upright.
+
+* Avoid bending backward or swinging the weight.
+
+---
+
+Kettlebell Plank Pull-Through
+
+1. Get into a high plank with feet slightly wider than your shoulders.
+2. Place the kettlebell beside one hand.
+3. Reach underneath with your opposite hand and drag it across to the other side.
+4. Alternate hands, keeping your hips level and abs braced.
+
+---
+
 Quick Weight Reference
 
 Exercise	Suggested Bell
 Goblet Squat (A)	20 kg
-Goblet Squat (C)	16 kg
 Single Arm Row	16 kg
 Push Up or Floor Press	BW / 12–16 kg
 Reverse Lunge	12–16 kg
 Clean & Press	12 kg
 Romanian Deadlift	16 kg
 Kettlebell Swing (B)	16 kg
-Kettlebell Swing (C)	16–20 kg
 Suitcase Hold or Carry	20 kg
-Suitcase March	20 kg
+Kettlebell Glute Bridge	20 kg
+Kettlebell Weighted Crunch	Bodyweight–12 kg
+Kettlebell Around-the-Body Pass	12 kg
+Kettlebell Side Bend	12 kg
+Kettlebell Plank Pull-Through	12 kg
