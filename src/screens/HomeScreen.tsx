@@ -13,6 +13,7 @@ import {
   abCycleWeek,
   alignMuscleSchedule,
   canAdvanceMonth,
+  coreSetProgressionNote,
   currentWeek,
   isStarted,
   leftoverLine,
@@ -302,6 +303,7 @@ export function ProgramScreen({
   const scheduled = alignMuscleSchedule(program, baseView.schedule)
   const cycleWeek = usesAbAlternation(scheduled) ? abCycleWeek(progress) : 1
   const totalWeeks = progressionWeeks(program) ?? 0
+  const coreSets = coreSetProgressionNote(program)
   const doseWeek = totalWeeks ? prescriptionWeek(program, progress) : 0
   const view = {
     ...baseView,
@@ -395,6 +397,7 @@ export function ProgramScreen({
       {multiMonth && phase?.name ? <p className="phase-name">{phase.name}</p> : null}
       {statusLine ? <p className="program-status">{statusLine}</p> : null}
       {totalWeeks ? <p className="progression-note">{progressionNote(totalWeeks)}</p> : null}
+      {coreSets ? <p className="progression-note">{coreSets}</p> : null}
       {program.equipment.length > 0 ? (
         <p className="equipment-line">
           Equipment: {program.equipment.map(formatEquipment).join(' · ')}

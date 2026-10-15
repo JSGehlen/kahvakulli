@@ -66,6 +66,7 @@ function sectionKey(line: string): string | undefined {
   if (/^warm[- ]?up$/i.test(text)) return 'warmup'
   if (/^(exercise\s+)?glossary$/i.test(text)) return 'glossary'
   if (/^(quick\s+)?weight\s+reference$/i.test(text)) return 'weights'
+  if (/^progression$/i.test(text)) return 'progression'
   if (/^workout\b/i.test(text) && text.length < 80) return `session:${text}`
   return undefined
 }
