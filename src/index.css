@@ -1271,3 +1271,175 @@ h2 {
     justify-content: center;
   }
 }
+
+.resume-card {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 24px;
+  padding: 18px 16px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--copper);
+  border-radius: 18px;
+}
+
+.resume-card h2 {
+  margin: 0;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: -0.03em;
+  font-size: 1.3rem;
+}
+
+.resume-card .eyebrow,
+.resume-card .lede {
+  margin: 0;
+}
+
+.resume-card .lede {
+  margin-bottom: 8px;
+}
+
+.week-strip .status.is-next {
+  color: var(--copper);
+}
+
+.session-card .eyebrow {
+  margin-bottom: 4px;
+}
+
+.controls.is-single {
+  grid-template-columns: 1fr;
+}
+
+.current-program .next-up {
+  display: grid;
+  gap: 4px;
+  margin: 14px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.current-program .next-up .eyebrow {
+  margin: 0;
+}
+
+.current-program .next-up strong {
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.current-program .next-up .card-focus {
+  margin-bottom: 10px;
+}
+
+.last-log {
+  margin: 4px 0 0;
+  text-align: center;
+  color: var(--copper);
+  font-size: 0.95rem;
+}
+
+.done .log {
+  width: 100%;
+  text-align: left;
+  margin-top: 8px;
+}
+
+.done .log ol {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.done .log li {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.done .log strong {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.log-hint {
+  margin: -4px 0 0;
+  color: var(--copper);
+  font-size: 0.9rem;
+}
+
+.bell-chips {
+  display: flex;
+  gap: 8px;
+}
+
+.bell-chips button,
+.reps-stepper button {
+  min-width: 52px;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.bell-chips button.is-on {
+  background: var(--copper);
+  border-color: var(--copper);
+  color: #140800;
+}
+
+.reps-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reps-stepper input {
+  width: 72px;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.reps-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.log-note,
+.log-error {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.log-error {
+  color: var(--work);
+}
+
+.done .log .primary {
+  width: 100%;
+}
+
+.done .skip-log {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.done:has(.log) {
+  justify-content: flex-start;
+}

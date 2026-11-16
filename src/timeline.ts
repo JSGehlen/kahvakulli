@@ -77,7 +77,8 @@ export function exerciseLine(
   }
   if (type === 'circuit' || usesReps(exercise)) {
     return [
-      exercise.reps ? `${exercise.reps} reps` : exercise.target,
+      exercise.reps ? `${exercise.reps} reps` : undefined,
+      exercise.target,
       type !== 'circuit' && exercise.restSec > 0 ? `${exercise.restSec}s rest` : undefined,
       exercise.bell,
     ]
@@ -247,7 +248,8 @@ export function buildTimeline(
       subtitle: `Move 1/${totalExercises}`,
       durationSec: 5,
       round: 1,
-      totalRounds: session.rounds,
+      totalRounds: isStraightSets(session) ? setCount(first, session) : session.rounds,
+      roundKind: isStraightSets(session) ? 'set' : 'round',
       exerciseIndex: 1,
       totalExercises,
       bell: first.bell,

@@ -5,18 +5,19 @@ import {
   advanceProgramMonth,
   endProgram,
   loadGlossary,
+  loadLastLogs,
   loadProgramProgress,
   loadPrograms,
-  loadWeekProgress,
   loadWorkouts,
   markWorkoutDone,
+  resumeProgram,
+  saveExerciseLogs,
   startProgram,
 } from './data.ts'
 import { displayTitle } from './loadWorkouts.ts'
 import {
   clearLastProgramId,
   clearSavedWorkout,
-  emptyWeekProgress,
   loadLastProgramId,
   loadSavedWorkout,
   loadSessionMode,
@@ -25,9 +26,13 @@ import {
   saveSessionMode,
   saveWorkout as saveActiveSession,
   type RestoredTimer,
-  type WeekProgress,
 } from './persist.ts'
-import { emptyProgramProgress, isStarted, splitProgramLists } from './programs.ts'
+import {
+  emptyProgramProgress,
+  isStarted,
+  sessionsPerWeek,
+  splitProgramLists,
+} from './programs.ts'
 import { AuthScreen } from './screens/AuthScreen.tsx'
 import { GlossaryScreen } from './screens/GlossaryScreen.tsx'
 import { HomeScreen, ProgramScreen } from './screens/HomeScreen.tsx'
@@ -36,7 +41,14 @@ import { DoneScreen, SessionScreen } from './screens/SessionScreen.tsx'
 import { WorkoutBuilderScreen } from './screens/WorkoutBuilderScreen.tsx'
 import { supabase } from './supabase.ts'
 import { buildTimeline, effectiveType } from './timeline.ts'
-import type { GlossaryEntry, Program, ProgramProgress, Session, SessionMode } from './types.ts'
+import type {
+  ExerciseLog,
+  GlossaryEntry,
+  Program,
+  ProgramProgress,
+  Session,
+  SessionMode,
+} from './types.ts'
 
 type Route =
   | { name: 'home' }
@@ -100,26 +112,27 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
   const [mode, setMode] = useState<SessionMode>(boot.mode)
   const [resume, setResume] = useState(boot.resume)
   const [lastProgramId, setLastProgramId] = useState(() => loadLastProgramId())
-  const [weekProgress, setWeekProgress] = useState<WeekProgress>(emptyWeekProgress)
   const [programProgress, setProgramProgress] = useState<Record<string, ProgramProgress>>({})
   const [programs, setPrograms] = useState<Program[]>([])
   const [glossary, setGlossary] = useState<GlossaryEntry[]>([])
   const [workouts, setWorkouts] = useState<Session[]>([])
+  const [lastLogs, setLastLogs] = useState<Record<string, ExerciseLog>>({})
   const [ready, setReady] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const reload = async () => {
     const entries = await loadGlossary()
-    const [nextPrograms, nextWorkouts, progress, months] = await Promise.all([
+    const [nextPrograms, nextWorkouts, months, logs] = await Promise.all([
       loadPrograms(entries),
       loadWorkouts(),
-      loadWeekProgress(userId),
       loadProgramProgress(userId),
+      // Logging is optional: the app still works before exercise_logs exists.
+      loadLastLogs(userId).catch(() => ({})),
     ])
+    setLastLogs(logs)
     setGlossary(entries)
     setPrograms(nextPrograms)
     setWorkouts(nextWorkouts)
-    setWeekProgress(progress)
     setProgramProgress(months)
   }
 
@@ -163,13 +176,23 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
       return
     }
     if (resume && resume.status === 'done') {
-      void markWorkoutDone(userId, found.id, foundSession.id).then((result) => {
-        setWeekProgress(result.week)
-        setProgramProgress(result.programs)
-      })
+      void recordDone(found, foundSession.id)
       setRoute({ name: 'done', id: found.id, sessionId: foundSession.id })
     }
+  // recordDone only reads stable values; adding it would re-run this on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, programs, route, resume, userId])
+
+  const recordDone = async (target: Program, sessionId: string) => {
+    const progress = programProgress[target.id] ?? emptyProgramProgress()
+    const next = await markWorkoutDone(
+      userId,
+      target.id,
+      sessionId,
+      sessionsPerWeek(target, progress),
+    )
+    setProgramProgress(next)
+  }
 
   const rememberProgram = (id: string) => {
     saveLastProgramId(id)
@@ -275,10 +298,13 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         currentProgress={
           currentProgram ? programProgress[currentProgram.id] : undefined
         }
+        includeWarmup={includeWarmup}
+        mode={mode}
         onOpen={(id) => {
           rememberProgram(id)
           setRoute({ name: 'program', id })
         }}
+        onStartNext={(target, next) => void startSession(next, target.id)}
         onOpenGlossary={() => setRoute({ name: 'glossary' })}
         onNewWorkout={() => setRoute({ name: 'new-workout' })}
         onNewProgram={() => setRoute({ name: 'new-program' })}
@@ -297,10 +323,13 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         currentProgress={
           currentProgram ? programProgress[currentProgram.id] : undefined
         }
+        includeWarmup={includeWarmup}
+        mode={mode}
         onOpen={(id) => {
           rememberProgram(id)
           setRoute({ name: 'program', id })
         }}
+        onStartNext={(target, next) => void startSession(next, target.id)}
         onOpenGlossary={() => setRoute({ name: 'glossary' })}
         onNewWorkout={() => setRoute({ name: 'new-workout' })}
         onNewProgram={() => setRoute({ name: 'new-program' })}
@@ -316,7 +345,6 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         progress={programProgress[program.id] ?? emptyProgramProgress()}
         includeWarmup={includeWarmup}
         mode={mode}
-        doneSessionIds={weekProgress.byProgram[program.id] ?? []}
         canEdit={program.userId === userId && !program.isBuiltin}
         onToggleWarmup={() => setIncludeWarmup((value) => !value)}
         onModeChange={(next) => {
@@ -336,20 +364,14 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
             clearLastProgramId()
             setLastProgramId(null)
           }
-          void endProgram(userId, program.id).then((result) => {
-            setProgramProgress(result.programs)
-            setWeekProgress(result.week)
-          })
+          void endProgram(userId, program.id).then(setProgramProgress)
         }}
         onProceed={() => {
           const current = programProgress[program.id]?.currentMonth ?? 1
-          void advanceProgramMonth(userId, program.id, current + 1).then((next) => {
-            setProgramProgress(next)
-            setWeekProgress((prev) => ({
-              ...prev,
-              byProgram: { ...prev.byProgram, [program.id]: [] },
-            }))
-          })
+          void advanceProgramMonth(userId, program.id, current + 1).then(setProgramProgress)
+        }}
+        onResume={(week, clearWeek) => {
+          void resumeProgram(userId, program.id, week, clearWeek).then(setProgramProgress)
         }}
         onEdit={() => setRoute({ name: 'edit-program', id: program.id })}
       />
@@ -361,46 +383,18 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
     if (segments.length === 0) {
       clearSavedWorkout()
       return (
-        <ProgramScreen
-          program={program}
-          progress={programProgress[program.id] ?? emptyProgramProgress()}
-          includeWarmup={includeWarmup}
-          mode={mode}
-          doneSessionIds={weekProgress.byProgram[program.id] ?? []}
-          onToggleWarmup={() => setIncludeWarmup((value) => !value)}
-          onModeChange={(next) => {
-            saveSessionMode(next)
-            setMode(next)
-          }}
-          onBack={() => setRoute({ name: 'home' })}
-          onStart={(next) => void startSession(next, program.id)}
-          onStartProgram={() => {
-            rememberProgram(program.id)
-            void startProgram(userId, program.id).then(setProgramProgress)
-          }}
-          onEndProgram={() => {
-            const saved = loadSavedWorkout()
-            if (saved?.programId === program.id) clearSavedWorkout()
-            if (lastProgramId === program.id) {
-              clearLastProgramId()
-              setLastProgramId(null)
-            }
-            void endProgram(userId, program.id).then((result) => {
-              setProgramProgress(result.programs)
-              setWeekProgress(result.week)
-            })
-          }}
-          onProceed={() => {
-            const current = programProgress[program.id]?.currentMonth ?? 1
-            void advanceProgramMonth(userId, program.id, current + 1).then((next) => {
-              setProgramProgress(next)
-              setWeekProgress((prev) => ({
-                ...prev,
-                byProgram: { ...prev.byProgram, [program.id]: [] },
-              }))
-            })
-          }}
-        />
+        <main className="page">
+          <p className="eyebrow">{displayTitle(program)}</p>
+          <h1>{session.name}</h1>
+          <p className="lede">This workout has no moves yet.</p>
+          <button
+            className="primary"
+            type="button"
+            onClick={() => leaveWorkout({ name: 'program', id: program.id })}
+          >
+            Back to program
+          </button>
+        </main>
       )
     }
     const saved = loadSavedWorkout()
@@ -416,6 +410,7 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         workoutType={effectiveType(session, mode)}
         segments={segments}
         glossary={glossary}
+        lastLogs={lastLogs}
         restored={restored}
         onPersist={(state) =>
           saveActiveSession({
@@ -430,10 +425,7 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
         }
         onExit={() => leaveWorkout({ name: 'program', id: program.id })}
         onDone={() => {
-          void markWorkoutDone(userId, program.id, session.id).then((result) => {
-            setWeekProgress(result.week)
-            setProgramProgress(result.programs)
-          })
+          void recordDone(program, session.id)
           window.setTimeout(() => {
             void releaseAudio()
           }, 900)
@@ -446,8 +438,17 @@ function SignedInApp({ userId, isAdmin }: { userId: string; isAdmin: boolean }) 
 
   return (
     <DoneScreen
+      key={session?.id ?? 'done'}
       sessionName={session?.name ?? 'Workout'}
       programTitle={displayTitle(program)}
+      program={program}
+      session={session}
+      lastLogs={lastLogs}
+      onSave={async (entries) => {
+        if (!session) return
+        await saveExerciseLogs(userId, program.id, session.id, entries)
+        setLastLogs(await loadLastLogs(userId))
+      }}
       onHome={() => leaveWorkout({ name: 'program', id: program.id })}
     />
   )

@@ -1,13 +1,17 @@
 import { displayTitle, sequenceIndex } from './loadWorkouts.ts'
-import { mondayKey } from './persist.ts'
-import type { Program, ProgramProgress } from './types.ts'
+import type { Program, ProgramPhase, ProgramProgress } from './types.ts'
 
 export { displayTitle, sequenceIndex, levelLabel } from './loadWorkouts.ts'
 
 export const MONTH_WEEKS = 4
 
+/** After this many days without a session, ask where to pick up. */
+export const BREAK_DAYS = 10
+
+const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
 export function emptyProgramProgress(): ProgramProgress {
-  return { currentMonth: 1, completions: {} }
+  return { currentMonth: 1, completions: {}, trainingWeek: 1, weekDoneIds: [] }
 }
 
 export function programEyebrow(program: Program): string {
@@ -27,52 +31,37 @@ export function isStarted(progress: ProgramProgress): boolean {
   return Boolean(progress.startedAt)
 }
 
-function mondayDate(date: Date): Date {
-  const key = mondayKey(date)
-  const [year, month, day] = key.split('-').map(Number)
-  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1)
+export function isMultiMonth(program: Program): boolean {
+  return program.phases.length > 1
 }
 
-/** 1-based week of the whole program, from the Monday of the week you started. */
-export function calendarProgramWeek(startedAt: string, now = new Date()): number {
-  const start = mondayDate(new Date(startedAt))
-  const current = mondayDate(now)
-  const days = Math.round((current.getTime() - start.getTime()) / 86_400_000)
-  return Math.max(1, Math.floor(days / 7) + 1)
+/** The phase you're in, or the first one. */
+export function currentPhase(program: Program, progress: ProgramProgress): ProgramPhase | undefined {
+  return (
+    program.phases.find((phase) => phase.month === progress.currentMonth) ?? program.phases[0]
+  )
 }
 
-function weekInMonth(progress: ProgramProgress, now = new Date()): number {
-  const origin = monthWeekOrigin(progress)
-  if (!origin) return 1
-  const current = mondayDate(now)
-  if (current.getTime() < origin.getTime()) return 0
-  const days = Math.round((current.getTime() - origin.getTime()) / 86_400_000)
-  return Math.floor(days / 7) + 1
+/** Week to show. Multi-month programs stop at week 4 until you proceed. */
+export function currentWeek(program: Program, progress: ProgramProgress): number {
+  const week = Math.max(1, progress.trainingWeek)
+  return isMultiMonth(program) ? Math.min(MONTH_WEEKS, week) : week
 }
 
-/** Monday Week 1 of the current month begins. Later months wait until the next Monday if you proceed mid-week. */
-export function monthWeekOrigin(progress: ProgramProgress): Date | undefined {
-  const stamp =
-    progress.currentMonth > 1
-      ? (progress.monthStartedAt ?? progress.startedAt)
-      : progress.startedAt
-  if (!stamp) return undefined
-  const started = new Date(stamp)
-  const monday = mondayDate(started)
-  if (progress.currentMonth <= 1 || started.getDay() === 1) return monday
-  const next = new Date(monday)
-  next.setDate(next.getDate() + 7)
-  return next
+/** Schedule rows in Monday → Sunday order: the order you work through a week. */
+export function orderedSchedule<T extends { day: string }>(schedule: T[]): T[] {
+  const order = (day: string) => {
+    const index = WEEKDAYS.indexOf(day.toLowerCase())
+    return index < 0 ? 99 : index
+  }
+  return [...schedule].sort((a, b) => order(a.day) - order(b.day))
 }
 
-export function monthWeekHasStarted(progress: ProgramProgress, now = new Date()): boolean {
-  return weekInMonth(progress, now) >= 1
-}
-
-export function currentWeek(progress: ProgramProgress, now = new Date()): number {
-  const raw = weekInMonth(progress, now)
-  if (raw < 1) return 0
-  return Math.min(MONTH_WEEKS, raw)
+export function sessionsPerWeek(program: Program, progress: ProgramProgress): number {
+  const phase = currentPhase(program, progress)
+  const schedule = phase?.schedule ?? program.schedule
+  const sessions = phase?.sessions ?? program.sessions
+  return Math.max(1, schedule.length || sessions.length)
 }
 
 export function usesAbAlternation(schedule: { workout?: string }[]): boolean {
@@ -83,10 +72,9 @@ export function usesAbAlternation(schedule: { workout?: string }[]): boolean {
   return names.size === 2 && names.has('Workout A') && names.has('Workout B')
 }
 
-/** Week 1 = A/B/A, week 2 = B/A/B, then repeat from the Monday you started. */
-export function abCycleWeek(progress: ProgramProgress, now = new Date()): number {
-  if (!progress.startedAt) return 1
-  return ((calendarProgramWeek(progress.startedAt, now) - 1) % 2) + 1
+/** Odd training weeks = A/B/A, even = B/A/B. */
+export function abCycleWeek(progress: ProgramProgress): number {
+  return ((Math.max(1, progress.trainingWeek) - 1) % 2) + 1
 }
 
 export function scheduleForAbCycle<T extends { workout: string }>(
@@ -101,24 +89,36 @@ export function scheduleForAbCycle<T extends { workout: string }>(
   })
 }
 
+/** Whole days since your last session, or undefined if there's nothing to compare. */
+export function daysSinceActive(progress: ProgramProgress, now = new Date()): number | undefined {
+  const stamp = progress.lastActiveAt ?? progress.startedAt
+  if (!stamp) return undefined
+  return Math.floor((now.getTime() - new Date(stamp).getTime()) / 86_400_000)
+}
+
+export function needsResumeChoice(progress: ProgramProgress, now = new Date()): boolean {
+  if (!isStarted(progress)) return false
+  const days = daysSinceActive(progress, now)
+  if (days === undefined || days < BREAK_DAYS) return false
+  return progress.trainingWeek > 1 || progress.weekDoneIds.length > 0
+}
+
 export function leftoverLine(program: Program, progress: ProgramProgress): string {
-  if (program.phases.length < 2) {
-    return "Are you sure you want to end early? You have this week's sessions left of this program."
+  if (!isMultiMonth(program)) {
+    return 'Are you sure you want to end early? Your progress in this program will be cleared.'
   }
-  const month = progress.currentMonth
-  const week = currentWeek(progress)
-  const monthsLeft = Math.max(0, program.phases.length - month)
-  const weeksLeft = MONTH_WEEKS - week + monthsLeft * MONTH_WEEKS
+  const week = currentWeek(program, progress)
+  const monthsLeft = Math.max(0, program.phases.length - progress.currentMonth)
+  const weeksLeft = MONTH_WEEKS - week + 1 + monthsLeft * MONTH_WEEKS
   const amount = `${weeksLeft} ${weeksLeft === 1 ? 'week' : 'weeks'}`
   return `Are you sure you want to end early? You have ${amount} left of this program.`
 }
 
 export function canAdvanceMonth(program: Program, progress: ProgramProgress): boolean {
-  if (program.phases.length < 2) return false
-  const current = program.phases.find((phase) => phase.month === progress.currentMonth)
+  if (!isMultiMonth(program)) return false
   const next = program.phases.find((phase) => phase.month === progress.currentMonth + 1)
-  if (!current || !next) return false
-  return weekInMonth(progress) >= MONTH_WEEKS
+  if (!next) return false
+  return progress.trainingWeek > MONTH_WEEKS
 }
 
 export function splitProgramLists(programs: Program[], userId?: string) {

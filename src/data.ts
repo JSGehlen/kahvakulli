@@ -1,8 +1,9 @@
-import { mondayKey, type WeekProgress } from './persist.ts'
 import { supabase } from './supabase.ts'
 import type {
   Exercise,
+  ExerciseLog,
   GlossaryEntry,
+  LogEntry,
   Profile,
   Program,
   ProgramPhase,
@@ -456,22 +457,6 @@ export async function deleteProgram(id: string): Promise<void> {
   if (error) throw error
 }
 
-export async function loadWeekProgress(userId: string): Promise<WeekProgress> {
-  const client = requireClient()
-  const weekStart = mondayKey()
-  const { data, error } = await client
-    .from('week_progress')
-    .select('program_id, done_workout_ids')
-    .eq('user_id', userId)
-    .eq('week_start', weekStart)
-  if (error) throw error
-  const byProgram: Record<string, string[]> = {}
-  for (const row of data ?? []) {
-    byProgram[row.program_id] = row.done_workout_ids ?? []
-  }
-  return { weekStart, byProgram }
-}
-
 function toCompletions(value: unknown): Record<string, number> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   const completions: Record<string, number> = {}
@@ -482,76 +467,121 @@ function toCompletions(value: unknown): Record<string, number> {
   return completions
 }
 
+const PROGRESS_COLUMNS =
+  'program_id, current_month, completions, started_at, month_started_at, training_week, week_done_ids, last_active_at'
+
+type ProgressRow = {
+  program_id: string
+  current_month: number | null
+  completions: unknown
+  started_at: string | null
+  month_started_at: string | null
+  training_week: number | null
+  week_done_ids: string[] | null
+  last_active_at: string | null
+}
+
+function toProgress(row: ProgressRow): ProgramProgress {
+  return {
+    currentMonth: Math.max(1, Number(row.current_month) || 1),
+    completions: toCompletions(row.completions),
+    startedAt: row.started_at ?? undefined,
+    monthStartedAt: row.month_started_at ?? undefined,
+    trainingWeek: Math.max(1, Number(row.training_week) || 1),
+    weekDoneIds: row.week_done_ids ?? [],
+    lastActiveAt: row.last_active_at ?? undefined,
+  }
+}
+
+async function readProgress(userId: string, programId: string): Promise<ProgressRow | null> {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('program_progress')
+    .select(PROGRESS_COLUMNS)
+    .eq('user_id', userId)
+    .eq('program_id', programId)
+    .maybeSingle()
+  if (error) throw error
+  return data as ProgressRow | null
+}
+
 export async function loadProgramProgress(
   userId: string,
 ): Promise<Record<string, ProgramProgress>> {
   const client = requireClient()
   const { data, error } = await client
     .from('program_progress')
-    .select('program_id, current_month, completions, started_at, month_started_at')
+    .select(PROGRESS_COLUMNS)
     .eq('user_id', userId)
   if (error) throw error
   const byProgram: Record<string, ProgramProgress> = {}
-  for (const row of data ?? []) {
-    byProgram[row.program_id] = {
-      currentMonth: Math.max(1, Number(row.current_month) || 1),
-      completions: toCompletions(row.completions),
-      startedAt: row.started_at ?? undefined,
-      monthStartedAt: row.month_started_at ?? undefined,
-    }
+  for (const row of (data ?? []) as ProgressRow[]) {
+    byProgram[row.program_id] = toProgress(row)
   }
   return byProgram
 }
 
+/**
+ * Records a finished session. The training week moves on once you've done
+ * `sessionsPerWeek` sessions in it, however many calendar days that took.
+ */
 export async function markWorkoutDone(
   userId: string,
   programId: string,
   workoutId: string,
-): Promise<{ week: WeekProgress; programs: Record<string, ProgramProgress> }> {
-  const current = await loadWeekProgress(userId)
-  const done = new Set(current.byProgram[programId] ?? [])
-  const alreadyThisWeek = done.has(workoutId)
-  done.add(workoutId)
-  const nextIds = [...done]
+  sessionsPerWeek: number,
+): Promise<Record<string, ProgramProgress>> {
   const client = requireClient()
-  const { error } = await client.from('week_progress').upsert({
+  const row = await readProgress(userId, programId)
+  const now = new Date().toISOString()
+  const completions = toCompletions(row?.completions)
+  completions[workoutId] = (completions[workoutId] ?? 0) + 1
+
+  let trainingWeek = Math.max(1, Number(row?.training_week) || 1)
+  let weekDoneIds = [...(row?.week_done_ids ?? []), workoutId]
+  if (weekDoneIds.length >= Math.max(1, sessionsPerWeek)) {
+    trainingWeek += 1
+    weekDoneIds = []
+  }
+
+  const { error } = await client.from('program_progress').upsert({
     user_id: userId,
     program_id: programId,
-    week_start: current.weekStart,
-    done_workout_ids: nextIds,
+    current_month: Math.max(1, Number(row?.current_month) || 1),
+    completions,
+    started_at: row?.started_at ?? now,
+    month_started_at: row?.month_started_at ?? row?.started_at ?? now,
+    training_week: trainingWeek,
+    week_done_ids: weekDoneIds,
+    last_active_at: now,
+    updated_at: now,
   })
   if (error) throw error
+  return loadProgramProgress(userId)
+}
 
-  const { data: progressRow, error: progressError } = await client
+/** Back after a break: keep going, or set the week to repeat. */
+export async function resumeProgram(
+  userId: string,
+  programId: string,
+  trainingWeek: number,
+  clearWeek: boolean,
+): Promise<Record<string, ProgramProgress>> {
+  const client = requireClient()
+  const now = new Date().toISOString()
+  const patch: Record<string, unknown> = {
+    training_week: Math.max(1, trainingWeek),
+    last_active_at: now,
+    updated_at: now,
+  }
+  if (clearWeek) patch.week_done_ids = []
+  const { error } = await client
     .from('program_progress')
-    .select('current_month, completions, started_at, month_started_at')
+    .update(patch)
     .eq('user_id', userId)
     .eq('program_id', programId)
-    .maybeSingle()
-  if (progressError) throw progressError
-
-  const currentMonth = Math.max(1, Number(progressRow?.current_month) || 1)
-  const completions = toCompletions(progressRow?.completions)
-  if (!alreadyThisWeek) {
-    completions[workoutId] = (completions[workoutId] ?? 0) + 1
-  }
-  const { error: upsertError } = await client.from('program_progress').upsert({
-    user_id: userId,
-    program_id: programId,
-    current_month: currentMonth,
-    completions,
-    started_at: progressRow?.started_at ?? new Date().toISOString(),
-    month_started_at:
-      progressRow?.month_started_at ?? progressRow?.started_at ?? new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  })
-  if (upsertError) throw upsertError
-
-  const programs = await loadProgramProgress(userId)
-  return {
-    week: { ...current, byProgram: { ...current.byProgram, [programId]: nextIds } },
-    programs,
-  }
+  if (error) throw error
+  return loadProgramProgress(userId)
 }
 
 export async function startProgram(
@@ -567,6 +597,9 @@ export async function startProgram(
     completions: {},
     started_at: now,
     month_started_at: now,
+    training_week: 1,
+    week_done_ids: [],
+    last_active_at: now,
     updated_at: now,
   })
   if (error) throw error
@@ -576,24 +609,15 @@ export async function startProgram(
 export async function endProgram(
   userId: string,
   programId: string,
-): Promise<{ week: WeekProgress; programs: Record<string, ProgramProgress> }> {
+): Promise<Record<string, ProgramProgress>> {
   const client = requireClient()
-  const { error: progressError } = await client
+  const { error } = await client
     .from('program_progress')
     .delete()
     .eq('user_id', userId)
     .eq('program_id', programId)
-  if (progressError) throw progressError
-  const { error: weekError } = await client
-    .from('week_progress')
-    .delete()
-    .eq('user_id', userId)
-    .eq('program_id', programId)
-  if (weekError) throw weekError
-  return {
-    week: await loadWeekProgress(userId),
-    programs: await loadProgramProgress(userId),
-  }
+  if (error) throw error
+  return loadProgramProgress(userId)
 }
 
 export async function advanceProgramMonth(
@@ -602,29 +626,66 @@ export async function advanceProgramMonth(
   nextMonth: number,
 ): Promise<Record<string, ProgramProgress>> {
   const client = requireClient()
-  const weekStart = mondayKey()
-  const { data: progressRow, error: readError } = await client
-    .from('program_progress')
-    .select('started_at, month_started_at')
-    .eq('user_id', userId)
-    .eq('program_id', programId)
-    .maybeSingle()
-  if (readError) throw readError
+  const row = await readProgress(userId, programId)
+  const now = new Date().toISOString()
   const { error } = await client.from('program_progress').upsert({
     user_id: userId,
     program_id: programId,
     current_month: nextMonth,
     completions: {},
-    started_at: progressRow?.started_at ?? new Date().toISOString(),
-    month_started_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    started_at: row?.started_at ?? now,
+    month_started_at: now,
+    training_week: 1,
+    week_done_ids: [],
+    last_active_at: now,
+    updated_at: now,
   })
   if (error) throw error
-  await client.from('week_progress').upsert({
-    user_id: userId,
-    program_id: programId,
-    week_start: weekStart,
-    done_workout_ids: [],
-  })
   return loadProgramProgress(userId)
+}
+
+/** Latest log per move name (lower-cased), newest first. */
+export async function loadLastLogs(userId: string): Promise<Record<string, ExerciseLog>> {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('exercise_logs')
+    .select('exercise_name, bell, reps, logged_at')
+    .eq('user_id', userId)
+    .order('logged_at', { ascending: false })
+    .limit(500)
+  if (error) throw error
+  const latest: Record<string, ExerciseLog> = {}
+  for (const row of data ?? []) {
+    const key = String(row.exercise_name).trim().toLowerCase()
+    if (latest[key]) continue
+    latest[key] = {
+      exerciseName: row.exercise_name,
+      bell: row.bell ?? undefined,
+      reps: row.reps ?? undefined,
+      loggedAt: row.logged_at,
+    }
+  }
+  return latest
+}
+
+export async function saveExerciseLogs(
+  userId: string,
+  programId: string,
+  workoutId: string,
+  entries: LogEntry[],
+): Promise<void> {
+  const rows = entries
+    .filter((entry) => entry.bell || entry.reps !== undefined)
+    .map((entry) => ({
+      user_id: userId,
+      program_id: programId,
+      workout_id: workoutId,
+      exercise_name: entry.exerciseName,
+      bell: entry.bell ?? null,
+      reps: entry.reps ?? null,
+    }))
+  if (rows.length === 0) return
+  const client = requireClient()
+  const { error } = await client.from('exercise_logs').insert(rows)
+  if (error) throw error
 }

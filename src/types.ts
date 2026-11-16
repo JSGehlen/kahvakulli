@@ -91,6 +91,11 @@ export type ProgramProgress = {
   completions: Record<string, number>
   startedAt?: string
   monthStartedAt?: string
+  /** 1-based training week within the current month. Moves on when a week's sessions are done. */
+  trainingWeek: number
+  /** Sessions finished in the current training week, in the order you did them. */
+  weekDoneIds: string[]
+  lastActiveAt?: string
 }
 
 export type Profile = {
@@ -128,4 +133,17 @@ export const DEFAULT_WARMUP: Warmup = {
     { name: 'Slow bodyweight squats', durationSec: 15 },
     { name: 'Arm circles', durationSec: 15 },
   ],
+}
+
+export type ExerciseLog = {
+  exerciseName: string
+  bell?: string
+  reps?: number
+  loggedAt: string
+}
+
+export type LogEntry = {
+  exerciseName: string
+  bell?: string
+  reps?: number
 }

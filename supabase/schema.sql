@@ -128,6 +128,9 @@ create table if not exists public.program_progress (
 
 alter table public.program_progress add column if not exists started_at timestamptz;
 alter table public.program_progress add column if not exists month_started_at timestamptz;
+alter table public.program_progress add column if not exists training_week integer not null default 1;
+alter table public.program_progress add column if not exists week_done_ids uuid[] not null default '{}';
+alter table public.program_progress add column if not exists last_active_at timestamptz;
 update public.program_progress
 set started_at = coalesce(started_at, updated_at, now())
 where started_at is null;

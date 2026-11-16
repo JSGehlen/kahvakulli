@@ -10,14 +10,19 @@ import {
 } from '../timeline.ts'
 import { displayTitle } from '../loadWorkouts.ts'
 import {
+  MONTH_WEEKS,
+  abCycleWeek,
   canAdvanceMonth,
+  currentPhase,
   currentWeek,
+  daysSinceActive,
+  isMultiMonth,
   isStarted,
   leftoverLine,
   monthLabel,
-  monthWeekHasStarted,
+  needsResumeChoice,
+  orderedSchedule,
   programEyebrow,
-  abCycleWeek,
   scheduleForAbCycle,
   usesAbAlternation,
 } from '../programs.ts'
@@ -35,7 +40,6 @@ type Props = {
   progress: ProgramProgress
   includeWarmup: boolean
   mode: SessionMode
-  doneSessionIds: string[]
   canEdit?: boolean
   onToggleWarmup: () => void
   onModeChange: (mode: SessionMode) => void
@@ -44,6 +48,7 @@ type Props = {
   onStartProgram: () => void
   onEndProgram: () => void
   onProceed?: () => void
+  onResume?: (week: number, clearWeek: boolean) => void
   onEdit?: () => void
 }
 
@@ -57,27 +62,50 @@ function viewForPhase(program: Program, phase: ProgramPhase): Program {
   }
 }
 
-type WeekStatus = 'done' | 'today' | 'upcoming' | 'missed'
-
-type WeekRow = {
-  day: string
-  workout?: string
-  rest: boolean
+/** The program as you see it now: current month, with A/B swapped on even weeks. */
+export function programView(program: Program, progress: ProgramProgress): Program {
+  const phase = currentPhase(program, progress)
+  const base = phase ? viewForPhase(program, phase) : program
+  const cycleWeek =
+    isStarted(progress) && usesAbAlternation(base.schedule) ? abCycleWeek(progress) : 1
+  return { ...base, schedule: scheduleForAbCycle(base.schedule, cycleWeek) }
 }
 
-const WEEKDAYS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-]
-const weekday = WEEKDAYS[new Date().getDay()]
+type Slot = {
+  label: string
+  session?: Session
+  done: boolean
+}
 
-function todaysRow(program: Program) {
-  return program.schedule.find((row) => row.day.toLowerCase() === weekday.toLowerCase())
+/**
+ * The week's sessions in order. A slot is done when you've finished its
+ * workout this training week; sessions done out of order fill the earliest gap.
+ */
+export function weekSlots(view: Program, weekDoneIds: string[]): Slot[] {
+  const rows: ScheduleRow[] = view.schedule.length
+    ? orderedSchedule(view.schedule)
+    : view.sessions.map((session) => ({ day: '', workout: session.name }))
+  const slots: Slot[] = rows.map((row) => ({
+    label: row.workout,
+    session: view.sessions.find((session) => session.name === row.workout),
+    done: false,
+  }))
+  const leftover: string[] = []
+  for (const id of weekDoneIds) {
+    const match = slots.find((slot) => !slot.done && slot.session?.id === id)
+    if (match) match.done = true
+    else leftover.push(id)
+  }
+  for (let count = 0; count < leftover.length; count += 1) {
+    const gap = slots.find((slot) => !slot.done)
+    if (gap) gap.done = true
+  }
+  return slots
+}
+
+export function nextSession(view: Program, progress: ProgramProgress): Session | undefined {
+  const slots = weekSlots(view, progress.weekDoneIds)
+  return slots.find((slot) => !slot.done)?.session ?? slots[0]?.session ?? view.sessions[0]
 }
 
 function formatEquipment(item: string): string {
@@ -89,77 +117,9 @@ function warmupToggleLabel(totalSec: number): string {
   return `Include ${minutes} min warm-up`
 }
 
-function weekOrder(dayName: string): number {
-  const index = WEEKDAYS.findIndex((day) => day.toLowerCase() === dayName.toLowerCase())
-  if (index < 0) return 99
-  return index === 0 ? 6 : index - 1
-}
-
-function sessionForRow(program: Program, row: ScheduleRow) {
-  return program.sessions.find((session) => session.name === row.workout)
-}
-
-function weekRows(program: Program): WeekRow[] {
-  const scheduled = new Map(
-    program.schedule.map((row) => [row.day.toLowerCase(), row]),
-  )
-  const days = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ]
-  for (const row of program.schedule) {
-    if (!days.some((day) => day.toLowerCase() === row.day.toLowerCase())) {
-      days.push(row.day)
-    }
-  }
-  days.sort((a, b) => weekOrder(a) - weekOrder(b))
-  return days.map((day) => {
-    const row = scheduled.get(day.toLowerCase())
-    return row
-      ? { day: row.day, workout: row.workout, rest: false }
-      : { day, rest: true }
-  })
-}
-
-function rowStatus(row: WeekRow, done: boolean, canMiss: boolean): WeekStatus | undefined {
-  const isToday = row.day.toLowerCase() === weekday.toLowerCase()
-  if (row.rest) return isToday ? 'today' : undefined
-  if (done) return 'done'
-  if (isToday) return 'today'
-  if (weekOrder(row.day) < weekOrder(weekday)) return canMiss ? 'missed' : undefined
-  return 'upcoming'
-}
-
-function statusLabel(status: WeekStatus): string {
-  if (status === 'done') return 'Done'
-  if (status === 'today') return 'Today'
-  if (status === 'missed') return 'Missed'
-  return 'Upcoming'
-}
-
-function sessionMissed(
-  program: Program,
-  session: Session,
-  done: boolean,
-  canMiss: boolean,
-): boolean {
-  if (!canMiss || done) return false
-  const row = program.schedule.find((item) => item.workout === session.name)
-  if (!row) return false
-  return weekOrder(row.day) < weekOrder(weekday)
-}
-
-function shortDay(day: string): string {
-  return day.slice(0, 3)
-}
-
 function shortWorkout(name: string): string {
-  return name.replace(/^workout\s+/i, '').trim() || name
+  const stripped = name.replace(/^workout\s+/i, '').trim() || name
+  return stripped.split(/\s+[—–-]\s+/)[0] ?? stripped
 }
 
 function SessionCard({
@@ -169,7 +129,6 @@ function SessionCard({
   mode,
   featured,
   done,
-  missed,
   canStart,
   onStart,
 }: {
@@ -179,7 +138,6 @@ function SessionCard({
   mode: SessionMode
   featured: boolean
   done: boolean
-  missed: boolean
   canStart: boolean
   onStart: (session: Session) => void
 }) {
@@ -197,14 +155,11 @@ function SessionCard({
     <article className={featured ? 'session-card is-current' : 'session-card'}>
       <header>
         <div>
+          {featured ? <p className="eyebrow">Next up</p> : null}
           <h2>{session.name}</h2>
           <p className="session-meta">{meta}</p>
         </div>
-        {done ? (
-          <span className="badge">Completed</span>
-        ) : missed ? (
-          <span className="badge is-missed">Missed</span>
-        ) : null}
+        {done ? <span className="badge">Done this week</span> : null}
       </header>
       <ol>
         {session.exercises.map((exercise) => (
@@ -220,22 +175,26 @@ function SessionCard({
           type="button"
           onClick={() => onStart(session)}
         >
-          {done ? 'Start again' : `Start ${session.name}`}
+          {done ? 'Do again' : `Start ${session.name}`}
         </button>
       ) : null}
     </article>
   )
 }
 
-function EndProgramDialog({
+function ConfirmDialog({
   open,
-  leftover,
-  onEnd,
+  title,
+  body,
+  confirmLabel,
+  onConfirm,
   onCancel,
 }: {
   open: boolean
-  leftover: string
-  onEnd: () => void
+  title: string
+  body: string
+  confirmLabel: string
+  onConfirm: () => void
   onCancel: () => void
 }) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -251,16 +210,16 @@ function EndProgramDialog({
     <dialog
       ref={ref}
       className="confirm"
-      aria-labelledby="end-program-title"
+      aria-label={title}
       onCancel={(event) => {
         event.preventDefault()
         onCancel()
       }}
     >
-      <h2 id="end-program-title">End program</h2>
-      <p>{leftover}</p>
-      <button className="primary" type="button" onClick={onEnd}>
-        End
+      <h2>{title}</h2>
+      <p>{body}</p>
+      <button className="primary" type="button" onClick={onConfirm}>
+        {confirmLabel}
       </button>
       <button className="secondary" type="button" onClick={onCancel}>
         Cancel
@@ -269,12 +228,56 @@ function EndProgramDialog({
   )
 }
 
+function ResumeCard({
+  days,
+  week,
+  doneThisWeek,
+  onResume,
+}: {
+  days: number
+  week: number
+  doneThisWeek: number
+  onResume: (week: number, clearWeek: boolean) => void
+}) {
+  const options: { label: string; week: number; clear: boolean; primary: boolean }[] = [
+    {
+      label: doneThisWeek > 0 ? `Continue week ${week}` : `Start week ${week}`,
+      week,
+      clear: false,
+      primary: true,
+    },
+  ]
+  if (week > 1) {
+    options.push({ label: `Repeat week ${week - 1}`, week: week - 1, clear: true, primary: false })
+  } else if (doneThisWeek > 0) {
+    options.push({ label: `Restart week ${week}`, week, clear: true, primary: false })
+  }
+  return (
+    <section className="resume-card">
+      <p className="eyebrow">Welcome back</p>
+      <h2>{days} days since your last session</h2>
+      <p className="lede">
+        Pick up where you left off, or ease back in by repeating the previous week.
+      </p>
+      {options.map((option) => (
+        <button
+          key={option.label}
+          className={option.primary ? 'primary' : 'secondary'}
+          type="button"
+          onClick={() => onResume(option.week, option.clear)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </section>
+  )
+}
+
 export function ProgramScreen({
   program,
   progress,
   includeWarmup,
   mode,
-  doneSessionIds,
   canEdit,
   onToggleWarmup,
   onModeChange,
@@ -283,44 +286,38 @@ export function ProgramScreen({
   onStartProgram,
   onEndProgram,
   onProceed,
+  onResume,
   onEdit,
 }: Props) {
   const [ending, setEnding] = useState(false)
   const phases = program.phases ?? []
   const started = isStarted(progress)
-  const month = phases.some((phase) => phase.month === progress.currentMonth)
-    ? progress.currentMonth
-    : (phases[0]?.month ?? 1)
-  const phase = phases.find((item) => item.month === month) ?? phases[0]
-  const baseView = phase ? viewForPhase(program, phase) : program
-  const cycleWeek = usesAbAlternation(baseView.schedule) ? abCycleWeek(progress) : 1
-  const view = {
-    ...baseView,
-    schedule: scheduleForAbCycle(baseView.schedule, started ? cycleWeek : 1),
-  }
-  const doneIds = new Set(doneSessionIds)
-  const canMiss = started && monthWeekHasStarted(progress)
-  const todayRow = todaysRow(view)
-  const featured =
-    started && todayRow ? sessionForRow(view, todayRow) : undefined
+  const phase = currentPhase(program, progress)
+  const month = phase?.month ?? 1
+  const view = programView(program, progress)
+  const multiMonth = isMultiMonth(program)
+  const week = currentWeek(program, progress)
+  const slots = weekSlots(view, progress.weekDoneIds)
+  const doneCount = slots.filter((slot) => slot.done).length
+  const firstOpen = slots.findIndex((slot) => !slot.done)
+  const doneIds = new Set(progress.weekDoneIds)
+  const readyToProceed = started && canAdvanceMonth(program, progress)
+  const programFinished =
+    started && multiMonth && !readyToProceed && progress.trainingWeek > MONTH_WEEKS
+  const featured = started && !readyToProceed && !programFinished ? nextSession(view, progress) : undefined
   const others = featured
     ? view.sessions.filter((session) => session.id !== featured.id)
     : view.sessions
   const owner =
     program.ownerName && !program.isBuiltin ? `By ${program.ownerName}.` : ''
-  const multiMonth = phases.length > 1
-  const week = phase && started ? currentWeek(progress) : 0
-  const readyToProceed =
-    started && canAdvanceMonth(program, { ...progress, currentMonth: month })
-  const nextMonth = program.phases.find((item) => item.month === month + 1)
+  const nextMonth = phases.find((item) => item.month === month + 1)
+  const days = daysSinceActive(progress)
+  const askResume = needsResumeChoice(progress) && days !== undefined
   const statusLine = started
     ? [
         multiMonth ? monthLabel(program, month) : undefined,
-        multiMonth && week ? `Week ${week}` : undefined,
-        !multiMonth && started && usesAbAlternation(baseView.schedule)
-          ? `Week ${cycleWeek}`
-          : undefined,
-        !multiMonth && view.schedule.length ? `${view.schedule.length} days a week` : undefined,
+        `Week ${week}`,
+        `${doneCount}/${slots.length} done`,
         owner,
       ]
         .filter(Boolean)
@@ -387,10 +384,23 @@ export function ProgramScreen({
         </p>
       ) : null}
 
-      {started && readyToProceed && nextMonth && onProceed ? (
+      {askResume && onResume ? (
+        <ResumeCard
+          days={days}
+          week={week}
+          doneThisWeek={doneCount}
+          onResume={onResume}
+        />
+      ) : null}
+
+      {readyToProceed && nextMonth && onProceed ? (
         <button className="primary proceed" type="button" onClick={onProceed}>
           Proceed to month {nextMonth.month}
         </button>
+      ) : null}
+
+      {programFinished ? (
+        <p className="lede">Program complete. Nice work.</p>
       ) : null}
 
       {!started ? (
@@ -399,50 +409,28 @@ export function ProgramScreen({
         </button>
       ) : null}
 
-      {started && view.schedule.length > 0 ? (
+      {started && slots.length > 0 && !readyToProceed && !programFinished ? (
         <section className="week">
-          <h2>This week</h2>
+          <h2>Week {week}</h2>
           <ol className="week-strip">
-            {weekRows(view).map((row) => {
-              const session = row.workout
-                ? view.sessions.find((item) => item.name === row.workout)
-                : undefined
-              const dayStatus = started
-                ? rowStatus(row, Boolean(session && doneIds.has(session.id)), canMiss)
-                : undefined
-              const isToday = row.day.toLowerCase() === weekday.toLowerCase()
-              const label = [
-                row.day,
-                row.rest ? 'Rest' : row.workout,
-                dayStatus ? statusLabel(dayStatus) : undefined,
-              ]
-                .filter(Boolean)
-                .join(', ')
+            {slots.map((slot, index) => {
+              const isNext = Boolean(featured) && index === firstOpen
+              const status = slot.done ? 'Done' : isNext ? 'Next' : ''
               return (
                 <li
-                  key={row.day}
-                  aria-label={label}
+                  key={`${slot.label}-${index}`}
+                  aria-label={[slot.label, status].filter(Boolean).join(', ')}
                   className={[
-                    isToday ? 'today' : undefined,
-                    dayStatus === 'done' ? 'is-done' : undefined,
-                    dayStatus === 'missed' ? 'is-missed' : undefined,
-                    row.rest ? 'is-rest' : undefined,
+                    isNext ? 'today' : undefined,
+                    slot.done ? 'is-done' : undefined,
                   ]
                     .filter(Boolean)
                     .join(' ')}
                 >
-                  <span className="week-day">
-                    {isToday ? row.day : shortDay(row.day)}
-                  </span>
-                  <strong className="week-work">
-                    {row.rest
-                      ? 'Rest'
-                      : isToday
-                        ? (row.workout ?? '')
-                        : shortWorkout(row.workout ?? '')}
-                  </strong>
-                  <span className={dayStatus ? `status is-${dayStatus}` : 'status'}>
-                    {dayStatus ? statusLabel(dayStatus) : ''}
+                  <span className="week-day">Session {index + 1}</span>
+                  <strong className="week-work">{shortWorkout(slot.label)}</strong>
+                  <span className={status ? `status is-${status.toLowerCase()}` : 'status'}>
+                    {status}
                   </span>
                 </li>
               )
@@ -463,7 +451,6 @@ export function ProgramScreen({
             mode={mode}
             featured
             done={doneIds.has(featured.id)}
-            missed={sessionMissed(view, featured, doneIds.has(featured.id), canMiss)}
             canStart={started}
             onStart={onStart}
           />
@@ -483,7 +470,6 @@ export function ProgramScreen({
             mode={mode}
             featured={false}
             done={doneIds.has(session.id)}
-            missed={sessionMissed(view, session, doneIds.has(session.id), canMiss)}
             canStart={started}
             onStart={onStart}
           />
@@ -496,10 +482,12 @@ export function ProgramScreen({
         </button>
       ) : null}
 
-      <EndProgramDialog
+      <ConfirmDialog
         open={ending}
-        leftover={leftoverLine(program, { ...progress, currentMonth: month })}
-        onEnd={() => {
+        title="End program"
+        body={leftoverLine(program, progress)}
+        confirmLabel="End"
+        onConfirm={() => {
           setEnding(false)
           onEndProgram()
         }}
@@ -515,7 +503,10 @@ export function HomeScreen({
   others,
   currentProgram,
   currentProgress,
+  includeWarmup,
+  mode,
   onOpen,
+  onStartNext,
   onOpenGlossary,
   onNewWorkout,
   onNewProgram,
@@ -526,7 +517,10 @@ export function HomeScreen({
   others: Program[]
   currentProgram?: Program
   currentProgress?: ProgramProgress
+  includeWarmup: boolean
+  mode: SessionMode
   onOpen: (id: string) => void
+  onStartNext: (program: Program, session: Session) => void
   onOpenGlossary: () => void
   onNewWorkout: () => void
   onNewProgram: () => void
@@ -536,22 +530,34 @@ export function HomeScreen({
   const otherMine = mine.filter((program) => program.id !== currentProgram?.id)
   const started = currentProgress ? isStarted(currentProgress) : false
   const currentMonth = currentProgress?.currentMonth ?? 1
-  const currentPhase =
-    currentProgram?.phases.find((phase) => phase.month === currentMonth) ??
-    currentProgram?.phases[0]
-  const week =
-    started && currentPhase && currentProgress
-      ? currentWeek(currentProgress)
+  const phase =
+    currentProgram && currentProgress ? currentPhase(currentProgram, currentProgress) : undefined
+  const view =
+    started && currentProgram && currentProgress
+      ? programView(currentProgram, currentProgress)
       : undefined
+  const upNext = view && currentProgress ? nextSession(view, currentProgress) : undefined
+  const slots = view && currentProgress ? weekSlots(view, currentProgress.weekDoneIds) : []
+  const slotIndex = slots.findIndex((slot) => !slot.done)
   const currentMeta =
-    started && currentProgram
+    started && currentProgram && currentProgress
       ? [
           monthLabel(currentProgram, currentMonth),
-          week ? `Week ${week}` : undefined,
+          `Week ${currentWeek(currentProgram, currentProgress)}`,
+          slots.length && slotIndex >= 0 ? `Session ${slotIndex + 1} of ${slots.length}` : undefined,
         ]
           .filter(Boolean)
           .join(' · ')
       : ''
+  const blocked =
+    !currentProgram ||
+    !currentProgress ||
+    needsResumeChoice(currentProgress) ||
+    canAdvanceMonth(currentProgram, currentProgress)
+  const nextMinutes =
+    upNext && view
+      ? formatMinutes(estimateSessionSeconds(upNext, view.warmup?.totalSec, includeWarmup, mode))
+      : undefined
 
   const card = (program: Program) => {
     return (
@@ -583,10 +589,32 @@ export function HomeScreen({
         <section className="current-program">
           <p className="eyebrow">Current program</p>
           <h2>{displayTitle(currentProgram)}</h2>
-          {currentPhase?.name ? <p className="phase-name">{currentPhase.name}</p> : null}
+          {phase?.name ? <p className="phase-name">{phase.name}</p> : null}
           {currentMeta ? <p className="current-meta">{currentMeta}</p> : null}
+          {upNext && !blocked ? (
+            <div className="next-up">
+              <p className="eyebrow">Next up</p>
+              <strong>{upNext.name}</strong>
+              <span className="card-focus">
+                {upNext.exercises.length} moves · {nextMinutes}
+              </span>
+              <button
+                className="primary"
+                type="button"
+                onClick={() => onStartNext(currentProgram, upNext)}
+              >
+                Start {upNext.name}
+              </button>
+            </div>
+          ) : started && blocked ? (
+            <p className="current-meta">
+              {currentProgress && needsResumeChoice(currentProgress)
+                ? `Back after ${daysSinceActive(currentProgress) ?? 0} days. Choose where to pick up.`
+                : 'Month done. Open the program to move on.'}
+            </p>
+          ) : null}
           <button className="secondary" type="button" onClick={() => onOpen(currentProgram.id)}>
-            Open program
+            View program
           </button>
         </section>
       ) : null}
